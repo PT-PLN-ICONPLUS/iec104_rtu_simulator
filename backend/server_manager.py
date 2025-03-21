@@ -1,4 +1,6 @@
-class IEC60870ServerFactory:
+from lib.libiec60870server import IEC60870_5_104_server
+
+class ServerManager:
     def __init__(self):
         self.servers = {}
     

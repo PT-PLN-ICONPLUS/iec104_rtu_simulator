@@ -1,0 +1,38 @@
+FROM debian:stable-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+              git \
+              build-essential \  
+              python3 \
+              python3-pip \
+              python3-venv \ 
+        && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=
+
+RUN git clone -b master https://github.com/mz-automation/lib60870.git /tmp/lib60870 && \
+    cd /tmp/lib60870 && \
+    git checkout 5741f28c122f83982ff3b8e20137b7db5c66eb70
+
+RUN cd /tmp/lib60870/lib60870-C && make dynlib && \
+    cp build/liblib60870.so /usr/local/lib/lib60870.so
+
+COPY . /srv/backend
+
+# Set the working directory
+WORKDIR /srv/backend
+
+# Create a virtual environment and activate it
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install -r requirements.txt
+
+# Set the entrypoint for the container to use the virtual environment
+ENV PATH="/srv/backend/venv/bin:$PATH"
+
+# Expose the necessary port
+EXPOSE 2404
+EXPOSE 6006
+
+# Command to run the application
+CMD ["python3", "main.py"]
