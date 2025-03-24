@@ -1,4 +1,4 @@
 uvicorn
 fastapi
-asyncio
-pydantic
+python-socketio
+python-dotenv

@@ -1,12 +1,23 @@
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 from typing import Union
-from server_manager import ServerManager
-from config_manager import ConfigurationManager
 import uvicorn
+from dotenv import load_dotenv
+import os
+from lib.libiec60870server import IEC60870_5_104_server
+
+load_dotenv()
+
+FASTAPI_HOST = os.getenv("FASTAPI_HOST")
+FASTAPI_PORT = int(os.getenv("FASTAPI_PORT"))
+
+IEC_SERVER_HOST = os.getenv("IEC_104_SERVER_HOST")
+IEC_SERVER_PORT = int(os.getenv("IEC_104_SERVER_PORT"))
+
+CONFIG = {}
+IEC_SERVER = IEC60870_5_104_server(IEC_SERVER_HOST, IEC_SERVER_PORT)
 
 app = FastAPI()
-server_manager = ServerManager()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=FASTAPI_HOST, port=FASTAPI_PORT)

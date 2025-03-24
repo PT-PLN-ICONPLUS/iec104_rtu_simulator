@@ -174,7 +174,7 @@ class IEC60870_5_104_server:
         return False
 
 
-    def __init__(self, ip = "0.0.0.0"):
+    def __init__(self, host, port):
         self.clockSyncHandler = CS101_ClockSynchronizationHandler(self.clock)
         self.interrogationHandler = CS101_InterrogationHandler(self.GI_h)
         self.asduHandler = CS101_ASDUHandler(self.ASDU_h)
@@ -183,7 +183,8 @@ class IEC60870_5_104_server:
         self.readEventHandler = CS101_ReadHandler(self.read)
 
         self.slave = CS104_Slave_create(100, 100)
-        CS104_Slave_setLocalAddress(self.slave, ip)
+        CS104_Slave_setLocalAddress(self.slave, host)
+        CS104_Slave_setLocalPort(self.slave, port)
         #   /* Set mode to a single redundancy group
         CS104_Slave_setServerMode(self.slave, CS104_MODE_SINGLE_REDUNDANCY_GROUP)
 
