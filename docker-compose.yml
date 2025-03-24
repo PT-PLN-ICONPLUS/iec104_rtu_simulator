@@ -28,7 +28,7 @@ services:
       - ./frontend/.env
     environment:
       - PORT=4051
-      - FLASK_HOST=10.14.152.231
+      - FLASK_HOST=0.0.0.0 # Ip address of the backend server
       - FLASK_PORT=6006
 
   # iec104_frontend_simulator_2:
