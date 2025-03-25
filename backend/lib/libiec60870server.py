@@ -3,10 +3,6 @@ from .lib60870 import *
 import time
 import logging
 
-# logging.basicConfig(
-#     level=logging.DEBUG,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-# )
 logger = logging.getLogger(__name__)
 
 class IEC60870_5_104_server:

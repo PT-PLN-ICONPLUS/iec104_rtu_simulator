@@ -28,8 +28,8 @@ services:
       - ./frontend/.env
     environment:
       - PORT=4051
-      - FLASK_HOST=0.0.0.0 # Ip address of the backend server
-      - FLASK_PORT=6006
+      - FASTAPI_HOST=localhost # Ip address of the backend server
+      - FASTAPI_PORT=6006
 
   # iec104_frontend_simulator_2:
   #   build: ./client
