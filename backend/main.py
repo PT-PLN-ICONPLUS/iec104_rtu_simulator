@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -126,11 +127,16 @@ async def remove_telesignal(sid, data):
 
 @sio.event
 async def update_telesignal(sid, data):
-    logger.info(f'Update Telesignal: {data}')
     ioa = int(data['ioa'])
     if 'value' in data:
         value = int(data['value'])
-        IEC_SERVER.update_ioa(ioa, value)
+        result = IEC_SERVER.update_ioa(ioa, value)
+
+        if result != 0:
+            await sio.emit('error', {'message': f'Failed to update telesignal IOA {ioa}'})
+        else:
+            logger.info(f'Telesignal Updated!: {data}')
+            await sio.emit('telesignal_updated', {'ioa': ioa, 'value': value})
     
     if 'auto_mode' in data:
         # Handle auto mode changes if needed
@@ -171,15 +177,57 @@ async def remove_telemetry(sid, data):
 
 @sio.event
 async def update_telemetry(sid, data):
-    logger.info(f'Update Telemetry: {data}')
     ioa = int(data['ioa'])
     if 'value' in data:
         value = int(float(data['value']) * 1) # Scale as needed
-        IEC_SERVER.update_ioa(ioa, value)
+        result = IEC_SERVER.update_ioa(ioa, value)
+        if result != 0:
+            await sio.emit('error', {'message': f'Failed to update telemetry IOA {ioa}'})
+        else:
+            logger.info(f'Telemetry Updated!: {data}')
+            await sio.emit('telemetry_updated', {'ioa': ioa, 'value': value})
     
     if 'auto_mode' in data:
         # Handle auto mode changes
         pass
+    
+# Add this function to continuously read IOA values and send to frontend
+async def poll_ioa_values():
+    """
+    Continuously poll IOA values from the IEC server and send them to frontend clients.
+    This function runs as a background task and sends updates every second.
+    """
+    logger.info("Starting IOA polling task")
+    
+    while True:
+        try:
+            # Create an empty dictionary to hold all current IOA values
+            ioa_data = {}
+            for ioa, item in IEC_SERVER.ioa_list.items():
+                value = item['data']
+                # Determine type based on item['type']
+                if item['type'] == MeasuredValueScaled:
+                    ioa_type = 'telemetry'
+                elif item['type'] == SinglePointInformation:
+                    ioa_type = 'telesignal'
+                else:
+                    ioa_type = 'unknown'
+                    
+                ioa_data[ioa] = {
+                    'ioa': ioa,
+                    'value': value,
+                    'type': ioa_type
+                }
+            
+            logger.info(f"Sending IOA values: {ioa_data}")
+            await sio.emit('ioa_values', ioa_data)
+            
+            # Wait for 1 second before next polling
+            await asyncio.sleep(3)
+            
+        except Exception as e:
+            logger.error(f"Error in IOA polling task: {str(e)}")
+            await asyncio.sleep(3)  # Wait before retrying if there's an error
 
 # TODO ASYNC CONTEXT MANAGER
 @asynccontextmanager
@@ -191,8 +239,18 @@ async def lifespan(app: FastAPI):
         logger.info("IEC 60870-5-104 server started successfully")
     else:
         logger.error("Failed to start IEC 60870-5-104 server")
+        
+    # Start the IOA polling task
+    polling_task = asyncio.create_task(poll_ioa_values())
     
-    yield  
+    yield 
+    
+    # Cancel the polling task when shutting down
+    polling_task.cancel()
+    try:
+        await polling_task
+    except asyncio.CancelledError:
+        logger.info("IOA polling task cancelled") 
     
     IEC_SERVER.stop()
     logger.info("IEC 60870-5-104 server stopped successfully")

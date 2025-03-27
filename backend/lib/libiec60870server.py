@@ -224,6 +224,7 @@ class IEC60870_5_104_server:
         return False
 
     def add_ioa(self, number, type = MeasuredValueScaled, data = 0, callback = None, event = False):
+        logger.info(f"Adding IOA {number} with type {type} and data {data}")
         if not number in self.ioa_list:
             self.ioa_list[int(number)] = { 'type': type, 'data': data, 'callback': callback, 'event': event }
             return 0
@@ -253,7 +254,7 @@ class IEC60870_5_104_server:
 
         return 0
     
-    def remover_ioa(self, ioa):
+    def remove_ioa(self, ioa):
         if int(ioa) in self.ioa_list:
             del self.ioa_list[int(ioa)]
             return 0

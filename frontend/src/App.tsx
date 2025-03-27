@@ -38,6 +38,7 @@ function App() {
   useEffect(() => {
     // Handle dynamic telesignal operations
     socket.on('telesignal_added', (data) => {
+      console.log('Telesignal added:', data);
       setTeleSignals(prev => [
         ...prev,
         {
@@ -50,10 +51,12 @@ function App() {
     });
 
     socket.on('telesignal_removed', (data) => {
+      console.log('Telesignal removed:', data);
       setTeleSignals(prev => prev.filter(item => item.ioa !== data.ioa));
     });
 
     socket.on('telesignal_updated', (data) => {
+      console.log('Telesignal updated:', data);
       setTeleSignals(prev =>
         prev.map(item =>
           item.ioa === data.ioa ? { ...item, value: data.value } : item
@@ -63,6 +66,7 @@ function App() {
 
     // Handle dynamic telemetry operations
     socket.on('telemetry_added', (data) => {
+      console.log('Telemetry added:', data);
       setTelemetry(prev => [
         ...prev,
         {
@@ -79,10 +83,12 @@ function App() {
     });
 
     socket.on('telemetry_removed', (data) => {
+      console.log('Telemetry removed:', data);
       setTelemetry(prev => prev.filter(item => item.ioa !== data.ioa));
     });
 
     socket.on('telemetry_updated', (data) => {
+      console.log('Telemetry updated:', data);
       setTelemetry(prev =>
         prev.map(item =>
           item.ioa === data.ioa ? { ...item, value: data.value } : item
