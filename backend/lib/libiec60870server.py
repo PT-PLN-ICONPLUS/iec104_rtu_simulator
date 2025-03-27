@@ -230,14 +230,9 @@ class IEC60870_5_104_server:
         else:
             return -1
 
-    def update_data(self):
-        for ioa in self.ioa_list:
-            if self.ioa_list[ioa]['callback'] != None:
-                self.ioa_list[ioa]['callback'](ioa,self.ioa_list[ioa], self)
-
     def update_ioa(self, ioa, data):
         value = int(float(data))
-        if value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
+        if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
             self.ioa_list[ioa]['data'] = value
             if self.ioa_list[ioa]['event'] == True:
                 newAsdu = CS101_ASDU_create(self.alParams, False, CS101_COT_SPONTANEOUS, 0, 1, False, False)
@@ -258,3 +253,15 @@ class IEC60870_5_104_server:
 
         return 0
     
+    def remover_ioa(self, ioa):
+        if int(ioa) in self.ioa_list:
+            del self.ioa_list[int(ioa)]
+            return 0
+        else:
+            return -1
+    
+    # TODO still figure it out    
+    def update_data(self):
+        for ioa in self.ioa_list:
+            if self.ioa_list[ioa]['callback'] != None:
+                self.ioa_list[ioa]['callback'](ioa,self.ioa_list[ioa], self)

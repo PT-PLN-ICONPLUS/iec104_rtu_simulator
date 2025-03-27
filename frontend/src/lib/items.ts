@@ -17,26 +17,44 @@ export interface CircuitBreakerItem {
   interval: number;
 }
 
+// export interface TeleSignalItem {
+//   id: string;
+//   name: string;
+//   ioa: number; // address
+//   value: number; // 0 is off, 1 is on
+//   min_value: number;
+//   max_value: number;
+//   interval: number;
+// }
+
+// export interface TelemetryItem {
+//   id: string;
+//   name: string;
+//   ioa: number; // address
+//   unit: string;
+//   value: number;
+//   scale_factor: number;
+//   min_value: number;
+//   max_value: number;
+//   interval: number;
+// }
+
 export interface TeleSignalItem {
   id: string;
   name: string;
-  ioa: number; // address
-  value: number; // 0 is off, 1 is on
-  min_value: number;
-  max_value: number;
-  interval: number;
+  ioa: number;
+  value: number;
 }
 
 export interface TelemetryItem {
   id: string;
   name: string;
-  ioa: number; // address
-  unit: string;
+  ioa: number;
   value: number;
-  scale_factor: number;
+  unit: string;
   min_value: number;
   max_value: number;
-  interval: number;
+  scale_factor: number;
 }
 
 export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem;

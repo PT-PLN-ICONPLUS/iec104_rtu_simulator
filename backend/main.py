@@ -24,54 +24,54 @@ IEC_SERVER_HOST = os.getenv("IEC_104_SERVER_HOST")
 IEC_SERVER_PORT = int(os.getenv("IEC_104_SERVER_PORT"))
 
 IOA_LIST = {
-    100: {
-        'type': MeasuredValueScaled,
-        'data': 1,
-        'callback': None,
-        'event': False
-    },
-    101: {
-        'type': MeasuredValueScaled,
-        'data': 22,
-        'callback': None,
-        'event': True
-    },
-    102: {
-        'type': MeasuredValueScaled,
-        'data': 42,
-        'callback': None,
-        'event': False
-    },
-    200: {
-        'type': SinglePointInformation,
-        'data': False,
-        'callback': None,
-        'event': False
-    },
-    300: {
-        'type': DoublePointInformation,
-        'data': 1,
-        'callback': None,
-        'event': False
-    },
-    301: {
-        'type': DoublePointInformation,
-        'data': 2,
-        'callback': None,
-        'event': False
-    },
-    5000: {
-        'type': DoubleCommand,
-        'data': 1,
-        'callback': None,
-        'event': False
-    },
-    5001: {
-        'type': DoubleCommand,
-        'data': 2,
-        'callback': None,
-        'event': False
-    }
+    # 100: {
+    #     'type': MeasuredValueScaled,
+    #     'data': 1,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 101: {
+    #     'type': MeasuredValueScaled,
+    #     'data': 22,
+    #     'callback': None,
+    #     'event': True
+    # },
+    # 102: {
+    #     'type': MeasuredValueScaled,
+    #     'data': 42,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 200: {
+    #     'type': SinglePointInformation,
+    #     'data': False,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 300: {
+    #     'type': DoublePointInformation,
+    #     'data': 1,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 301: {
+    #     'type': DoublePointInformation,
+    #     'data': 2,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 5000: {
+    #     'type': DoubleCommand,
+    #     'data': 1,
+    #     'callback': None,
+    #     'event': False
+    # },
+    # 5001: {
+    #     'type': DoubleCommand,
+    #     'data': 2,
+    #     'callback': None,
+    #     'event': False
+    # }
 }
 
 IEC_SERVER = IEC60870_5_104_server(IEC_SERVER_HOST, IEC_SERVER_PORT, IOA_LIST)
@@ -95,6 +95,91 @@ async def connect(sid, environ):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket client disconnected: {sid}")
+    
+@sio.event
+async def add_telesignal(sid, data):
+    logger.info(f'Add Telesignal: {data}')
+    ioa = int(data['ioa'])
+    name = data['name']
+    initial_value = int(data.get('value', 0))
+    
+    # Add a SinglePointInformation for telesignal
+    result = IEC_SERVER.add_ioa(ioa, SinglePointInformation, initial_value, None, True)
+    if result == 0:
+        await sio.emit('telesignal_added', {
+            'ioa': ioa,
+            'name': name,
+            'value': initial_value
+        })
+    else:
+        await sio.emit('error', {'message': f'Failed to add telesignal IOA {ioa}'})
+
+@sio.event
+async def remove_telesignal(sid, data):
+    logger.info(f'Remove Telesignal: {data}')
+    ioa = int(data['ioa'])
+    result = IEC_SERVER.remove_ioa(ioa)
+    if result == 0:
+        await sio.emit('telesignal_removed', {'ioa': ioa})
+    else:
+        await sio.emit('error', {'message': f'Failed to remove telesignal IOA {ioa}'})
+
+@sio.event
+async def update_telesignal(sid, data):
+    logger.info(f'Update Telesignal: {data}')
+    ioa = int(data['ioa'])
+    if 'value' in data:
+        value = int(data['value'])
+        IEC_SERVER.update_ioa(ioa, value)
+    
+    if 'auto_mode' in data:
+        # Handle auto mode changes if needed
+        auto_mode = data['auto_mode']
+        # You may need to store auto_mode state somewhere
+
+@sio.event
+async def add_telemetry(sid, data):
+    logger.info(f'Add Telemetry: {data}')
+    ioa = int(data['ioa'])
+    name = data['name']
+    initial_value = int(data.get('value', 0))
+    unit = data.get('unit', '')
+    scale_factor = float(data.get('scale_factor', 1.0))
+    
+    # Add a MeasuredValueScaled for telemetry
+    result = IEC_SERVER.add_ioa(ioa, MeasuredValueScaled, initial_value, None, True)
+    if result == 0:
+        await sio.emit('telemetry_added', {
+            'ioa': ioa,
+            'name': name,
+            'value': initial_value,
+            'unit': unit,
+            'scale_factor': scale_factor
+        })
+    else:
+        await sio.emit('error', {'message': f'Failed to add telemetry IOA {ioa}'})
+
+@sio.event
+async def remove_telemetry(sid, data):
+    logger.info(f'Remove Telemetry: {data}')
+    ioa = int(data['ioa'])
+    result = IEC_SERVER.remove_ioa(ioa)
+    if result == 0:
+        await sio.emit('telemetry_removed', {'ioa': ioa})
+    else:
+        await sio.emit('error', {'message': f'Failed to remove telemetry IOA {ioa}'})
+
+@sio.event
+async def update_telemetry(sid, data):
+    logger.info(f'Update Telemetry: {data}')
+    ioa = int(data['ioa'])
+    if 'value' in data:
+        value = int(float(data['value']) * 1) # Scale as needed
+        IEC_SERVER.update_ioa(ioa, value)
+    
+    if 'auto_mode' in data:
+        # Handle auto mode changes
+        pass
 
 # TODO ASYNC CONTEXT MANAGER
 @asynccontextmanager

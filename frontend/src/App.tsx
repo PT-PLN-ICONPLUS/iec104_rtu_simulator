@@ -12,26 +12,91 @@ function App() {
   const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
   const [telemetry, setTelemetry] = useState<TelemetryItem[]>([]);
 
+  // useEffect(() => {
+  //   socket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
+  //     console.log('Received circuit breakers update:', data);
+  //     setCircuitBreakers(data);
+  //   });
+
+  //   socket.on('tele_signals', (data: TeleSignalItem[]) => {
+  //     console.log('Received telesignals update:', data);
+  //     setTeleSignals(data);
+  //   });
+
+  //   socket.on('telemetry_items', (data: TelemetryItem[]) => {
+  //     console.log('Received telemetry update:', data);
+  //     setTelemetry(data);
+  //   });
+
+  //   return () => {
+  //     socket.off('circuit_breakers');
+  //     socket.off('tele_signals');
+  //     socket.off('telemetry_items');
+  //   };
+  // }, []);
+
   useEffect(() => {
-    socket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
-      console.log('Received circuit breakers update:', data);
-      setCircuitBreakers(data);
+    // Handle dynamic telesignal operations
+    socket.on('telesignal_added', (data) => {
+      setTeleSignals(prev => [
+        ...prev,
+        {
+          id: `ts-${data.ioa}`,
+          name: data.name,
+          ioa: data.ioa,
+          value: data.value
+        }
+      ]);
     });
 
-    socket.on('tele_signals', (data: TeleSignalItem[]) => {
-      console.log('Received telesignals update:', data);
-      setTeleSignals(data);
+    socket.on('telesignal_removed', (data) => {
+      setTeleSignals(prev => prev.filter(item => item.ioa !== data.ioa));
     });
 
-    socket.on('telemetry_items', (data: TelemetryItem[]) => {
-      console.log('Received telemetry update:', data);
-      setTelemetry(data);
+    socket.on('telesignal_updated', (data) => {
+      setTeleSignals(prev =>
+        prev.map(item =>
+          item.ioa === data.ioa ? { ...item, value: data.value } : item
+        )
+      );
+    });
+
+    // Handle dynamic telemetry operations
+    socket.on('telemetry_added', (data) => {
+      setTelemetry(prev => [
+        ...prev,
+        {
+          id: `tm-${data.ioa}`,
+          name: data.name,
+          ioa: data.ioa,
+          value: data.value,
+          unit: data.unit || '',
+          min_value: data.min_value || 0,
+          max_value: data.max_value || 100,
+          scale_factor: data.scale_factor || 1
+        }
+      ]);
+    });
+
+    socket.on('telemetry_removed', (data) => {
+      setTelemetry(prev => prev.filter(item => item.ioa !== data.ioa));
+    });
+
+    socket.on('telemetry_updated', (data) => {
+      setTelemetry(prev =>
+        prev.map(item =>
+          item.ioa === data.ioa ? { ...item, value: data.value } : item
+        )
+      );
     });
 
     return () => {
-      socket.off('circuit_breakers');
-      socket.off('tele_signals');
-      socket.off('telemetry_items');
+      socket.off('telesignal_added');
+      socket.off('telesignal_removed');
+      socket.off('telesignal_updated');
+      socket.off('telemetry_added');
+      socket.off('telemetry_removed');
+      socket.off('telemetry_updated');
     };
   }, []);
 
@@ -84,73 +149,119 @@ function App() {
     }
   };
 
-  const addTeleSignal = (data: {
-    name: string;
-    ioa: number;
-    interval: number;
-    value: number;
-  }) => {
-    const newItem: TeleSignalItem = {
-      id: Date.now().toString(),
-      name: data.name,
-      ioa: data.ioa,
-      value: data.value,
-      min_value: 0,
-      max_value: 1,
-      interval: data.interval
-    };
+  // const addTeleSignal = (data: {
+  //   name: string;
+  //   ioa: number;
+  //   interval: number;
+  //   value: number;
+  // }) => {
+  //   const newItem: TeleSignalItem = {
+  //     id: Date.now().toString(),
+  //     name: data.name,
+  //     ioa: data.ioa,
+  //     value: data.value,
+  //     min_value: 0,
+  //     max_value: 1,
+  //     interval: data.interval
+  //   };
 
-    if (socket) {
-      socket.emit('add_tele_signal', newItem, (response: any) => {
-        console.log('Add tele signal response:', response);
-      });
+  //   if (socket) {
+  //     socket.emit('add_tele_signal', newItem, (response: any) => {
+  //       console.log('Add tele signal response:', response);
+  //     });
+  //   }
+  // };
+
+  // const removeTeleSignal = (data: { id: string }) => {
+  //   if (socket) {
+  //     socket.emit('remove_tele_signal', data, (response: any) => {
+  //       console.log('Remove tele signal response:', response);
+  //     });
+  //   }
+  // };
+
+  // const addTelemetry = (data: {
+  //   name: string;
+  //   ioa: number;
+  //   unit: string;
+  //   value: number;
+  //   min_value: number;
+  //   max_value: number;
+  //   interval: number;
+  //   scale_factor: number;
+  // }) => {
+  //   const newItem: TelemetryItem = {
+  //     id: Date.now().toString(),
+  //     name: data.name,
+  //     ioa: data.ioa,
+  //     unit: data.unit || 'Unit',
+  //     value: data.value,
+  //     scale_factor: parseFloat(data.scale_factor?.toString() || "1"),
+  //     min_value: data.min_value,
+  //     max_value: data.max_value,
+  //     interval: data.interval
+  //   };
+
+  //   if (socket) {
+  //     socket.emit('add_telemetry', newItem, (response: any) => {
+  //       console.log('Add telemetry response:', response);
+  //     });
+  //   }
+  // };
+
+  // const removeTelemetry = (data: { id: string }) => {
+  //   if (socket) {
+  //     socket.emit('remove_telemetry', data, (response: any) => {
+  //       console.log('Remove telemetry response:', response);
+  //     });
+  //   }
+  // };
+
+  const handleAddTeleSignal = (data: { name: string, ioa: number }) => {
+    socket.emit('add_telesignal', {
+      ioa: data.ioa,
+      name: data.name,
+      value: 0 // Default value
+    });
+  };
+
+  // Handler for removing a telesignal
+  const handleRemoveTeleSignal = (data: { id: string }) => {
+    // Extract IOA from the ID or find the item in teleSignals
+    const item = teleSignals.find(item => item.id === data.id);
+    if (item) {
+      socket.emit('remove_telesignal', { ioa: item.ioa });
     }
   };
 
-  const removeTeleSignal = (data: { id: string }) => {
-    if (socket) {
-      socket.emit('remove_tele_signal', data, (response: any) => {
-        console.log('Remove tele signal response:', response);
-      });
-    }
-  };
-
-  const addTelemetry = (data: {
-    name: string;
-    ioa: number;
-    unit: string;
-    value: number;
-    min_value: number;
-    max_value: number;
-    interval: number;
-    scale_factor: number;
+  // Handler for adding a new telemetry
+  const handleAddTelemetry = (data: {
+    name: string,
+    ioa: number,
+    unit: string,
+    min_value: number,
+    max_value: number,
+    scale_factor: number
   }) => {
-    const newItem: TelemetryItem = {
-      id: Date.now().toString(),
-      name: data.name,
+    socket.emit('add_telemetry', {
       ioa: data.ioa,
-      unit: data.unit || 'Unit',
-      value: data.value,
-      scale_factor: parseFloat(data.scale_factor?.toString() || "1"),
+      name: data.name,
+      value: data.min_value, // Default to min value
+      unit: data.unit,
       min_value: data.min_value,
       max_value: data.max_value,
-      interval: data.interval
-    };
-
-    if (socket) {
-      socket.emit('add_telemetry', newItem, (response: any) => {
-        console.log('Add telemetry response:', response);
-      });
-    }
+      scale_factor: data.scale_factor
+    });
   };
 
-  const removeTelemetry = (data: { id: string }) => {
-    if (socket) {
-      socket.emit('remove_telemetry', data, (response: any) => {
-        console.log('Remove telemetry response:', response);
-      });
+  // Handler for removing a telemetry
+  const handleRemoveTelemetry = (data: { id: string }) => {
+    // Extract IOA from the ID or find the item in telemetry
+    const item = telemetry.find(item => item.id === data.id);
+    if (item) {
+      socket.emit('remove_telemetry', { ioa: item.ioa });
     }
-  };
+  }
 
   return (
     <div className="min-w-screen">
@@ -189,8 +300,8 @@ function App() {
         <div className="w-1/3 border-2">
           <SectionTitle
             title="Telesignals"
-            onAdd={addTeleSignal}
-            onRemove={removeTeleSignal}
+            onAdd={handleAddTeleSignal}
+            onRemove={handleRemoveTeleSignal}
             items={teleSignals}
           />
           {teleSignals.map(item => (
@@ -206,8 +317,8 @@ function App() {
         <div className="w-1/3 border-2">
           <SectionTitle
             title="Telemetry"
-            onAdd={addTelemetry}
-            onRemove={removeTelemetry}
+            onAdd={handleAddTelemetry}
+            onRemove={handleRemoveTelemetry}
             items={telemetry}
           />
           {telemetry.map(item => (
