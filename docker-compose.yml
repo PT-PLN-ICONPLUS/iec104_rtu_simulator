@@ -13,8 +13,8 @@ services:
     environment:
       - REACT_HOST=0.0.0.0
       - REACT_PORT=4051
-      - FLASK_HOST=0.0.0.0
-      - FLASK_PORT=6006
+      - FASTAPI_HOST=0.0.0.0
+      - FASTAPI_PORT=6006
       - IEC_1004_SERVER_PORT=2404
   simulator_iec104_frontend_1:
     build: ./frontend

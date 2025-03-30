@@ -36,6 +36,27 @@ function App() {
   // }, []);
 
   useEffect(() => {
+    socket.on('ioa_values', (data) => {
+      // This handles all IOA values at once
+      console.log('Received IOA values update:', data);
+
+      // Update telesignals
+      setTeleSignals(prev => prev.map(item => {
+        if (data[item.ioa] && data[item.ioa].type === 'telesignal') {
+          return { ...item, value: data[item.ioa].value };
+        }
+        return item;
+      }));
+
+      // Update telemetry
+      setTelemetry(prev => prev.map(item => {
+        if (data[item.ioa] && data[item.ioa].type === 'telemetry') {
+          return { ...item, value: data[item.ioa].value };
+        }
+        return item;
+      }));
+    });
+
     // Handle dynamic telesignal operations
     socket.on('telesignal_added', (data) => {
       console.log('Telesignal added:', data);
@@ -97,6 +118,7 @@ function App() {
     });
 
     return () => {
+      socket.off('ioa_values');
       socket.off('telesignal_added');
       socket.off('telesignal_removed');
       socket.off('telesignal_updated');
@@ -223,11 +245,12 @@ function App() {
   //   }
   // };
 
-  const handleAddTeleSignal = (data: { name: string, ioa: number }) => {
+  const handleAddTeleSignal = (data: { name: string, ioa: number, interval: number }) => {
     socket.emit('add_telesignal', {
       ioa: data.ioa,
       name: data.name,
-      value: 0 // Default value
+      value: 0, // Default value
+      interval: data.interval,
     });
   };
 
@@ -245,6 +268,8 @@ function App() {
     name: string,
     ioa: number,
     unit: string,
+    interval: number,
+    value: number,
     min_value: number,
     max_value: number,
     scale_factor: number
@@ -252,7 +277,8 @@ function App() {
     socket.emit('add_telemetry', {
       ioa: data.ioa,
       name: data.name,
-      value: data.min_value, // Default to min value
+      interval: data.interval,
+      value: data.value, // Default to min value
       unit: data.unit,
       min_value: data.min_value,
       max_value: data.max_value,

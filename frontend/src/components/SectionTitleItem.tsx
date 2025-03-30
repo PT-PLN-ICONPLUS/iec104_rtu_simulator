@@ -6,7 +6,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { ManageItemDialog, Item } from "./ManageItemDialog";
+import { ManageItemDialog } from "./ManageItemDialog";
+import { Item } from "../lib/items";
 
 interface SectionTitleProps {
   title: string;
