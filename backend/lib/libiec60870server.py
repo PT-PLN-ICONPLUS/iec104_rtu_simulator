@@ -199,7 +199,6 @@ class IEC60870_5_104_server:
         return True
     
     # IOAs Handlers
-
     def read(self, param, connection, asdu, ioa):
         if ioa in self.ioa_list:
             # update data

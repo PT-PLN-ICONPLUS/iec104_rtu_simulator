@@ -354,25 +354,25 @@ async def poll_ioa_values():
             }
             
             # Simulate circuit breakers in auto mode
-            for item_id, item in list(circuit_breakers.items()):
-                # Skip if not due for update yet
-                last_update = last_update_times["circuit_breakers"].get(item_id, 0)
-                if current_time - last_update < item.interval:
-                    continue
+            # for item_id, item in list(circuit_breakers.items()):
+            #     # Skip if not due for update yet
+            #     last_update = last_update_times["circuit_breakers"].get(item_id, 0)
+            #     if current_time - last_update < item.interval:
+            #         continue
                     
-                if not item.remote:  # Only change values if not in remote mode
-                    continue
+            #     if not item.remote:  # Only change values if not in remote mode
+            #         continue
                     
-                new_value = random.randint(item.min_value, item.max_value)
-                if new_value != item.value:
-                    circuit_breakers[item_id].value = new_value
-                    IEC_SERVER.update_ioa(item.ioa_data, new_value)
-                    if item.is_double_point and item.ioa_data_dp:
-                        IEC_SERVER.update_ioa(item.ioa_data_dp, new_value)
+            #     new_value = random.randint(item.min_value, item.max_value)
+            #     if new_value != item.value:
+            #         circuit_breakers[item_id].value = new_value
+            #         IEC_SERVER.update_ioa(item.ioa_data, new_value)
+            #         if item.is_double_point and item.ioa_data_dp:
+            #             IEC_SERVER.update_ioa(item.ioa_data_dp, new_value)
                         
-                    # Record update time
-                    last_update_times["circuit_breakers"][item_id] = current_time
-                    has_updates["circuit_breakers"] = True
+            #         # Record update time
+            #         last_update_times["circuit_breakers"][item_id] = current_time
+            #         has_updates["circuit_breakers"] = True
             
             # Simulate telesignals in auto mode
             for item_id, item in list(telesignals.items()):
