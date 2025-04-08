@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import datetime
 from .lib60870 import *
 import time
 import logging
@@ -90,60 +91,145 @@ class IEC60870_5_104_server:
         logger.info(f"Received interrogation for group {qoi}")
 
         if (qoi == 20): #{ /* only handle station interrogation */
-            alParams = IMasterConnection_getApplicationLayerParameters(connection)
-            IMasterConnection_sendACT_CON(connection, asdu, False)
+            try:
+                alParams = IMasterConnection_getApplicationLayerParameters(connection)
+                IMasterConnection_sendACT_CON(connection, asdu, False)
 
-            #* The CS101 specification only allows information objects without timestamp in GI responses */
-            # measuredvalue
-            type = MeasuredValueScaled
-            newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
-            io = None
-            for ioa in self.ioa_list:
-                if self.ioa_list[ioa]['type'] == type:
-                    if io == None:
-                        io = cast( MeasuredValueScaled_create(None,ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject) #
-                        CS101_ASDU_addInformationObject(newAsdu, io)
-                    else:
-                        CS101_ASDU_addInformationObject(newAsdu, cast( MeasuredValueScaled_create(cast(io,MeasuredValueScaled),ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
-            if io != None:
-                InformationObject_destroy(io)
-                IMasterConnection_sendASDU(connection, newAsdu)
-            CS101_ASDU_destroy(newAsdu)
+                #* The CS101 specification only allows information objects without timestamp in GI responses */
+                # measuredvalue
+                type = MeasuredValueScaled
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( MeasuredValueScaled_create(None,ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject) #
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( MeasuredValueScaled_create(cast(io,MeasuredValueScaled),ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
+                #singlepoint
+                type = SinglePointInformation
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( SinglePointInformation_create(cast(io,SinglePointInformation), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
+                type = DoublePointInformation
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( DoublePointInformation_create(cast(io,DoublePointInformation), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
+                type = MeasuredValueNormalized
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( MeasuredValueNormalized_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( MeasuredValueNormalized_create(cast(io,MeasuredValueNormalized), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
+                type = MeasuredValueShort
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( MeasuredValueShort_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( MeasuredValueShort_create(cast(io,MeasuredValueShort), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
+                
+                #MeasuredValueShortWithCP56Time2a
+                type = MeasuredValueShortWithCP56Time2a
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                
+                # Dapatkan waktu saat ini
+                now = datetime.now()
+                
+                # # Buat objek timestamp dengan waktu saat ini
+                # timestamp = struct_sCP56Time2a()
+                
+                io = None
+                timestamp = struct_sCP56Time2a()
+                # Isi bidang encodedValue dengan nilai yang sesuai dari waktu saat ini
+                timestamp.encodedValue = (
+                    now.microsecond // 1000,    # Detik
+                    now.second,    # Menit
+                    now.minute,      # Jam
+                    now.hour + 7,       # Hari dalam bulan
+                    now.day,     # Bulan
+                    now.month,
+                    now.year % 1000# Tahun (hanya dua digit terakhir)
+                )
 
-            #singlepoint
-            type = SinglePointInformation
-            newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
-            io = None
-            for ioa in self.ioa_list:
-                if self.ioa_list[ioa]['type'] == type:
-                    if io == None:
-                        io = cast( SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
-                        CS101_ASDU_addInformationObject(newAsdu, io)
-                    else:
-                        CS101_ASDU_addInformationObject(newAsdu, cast( SinglePointInformation_create(cast(io,SinglePointInformation), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
-            if io != None:
-                InformationObject_destroy(io)
-                IMasterConnection_sendASDU(connection, newAsdu)
-            CS101_ASDU_destroy(newAsdu)
+                logger.info("Year: %d, Month: %d, Day: %d, Hour: %d, Minute: %d, Second: %d, MS: %d", now.year, now.month, now.day, now.hour, now.minute, now.second, now.microsecond)
+                # timestamp.encodedValue = (1, 2, 3, 4, 5, 6, 7)
+                
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast( MeasuredValueShortWithCP56Time2a_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD, timestamp), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast( MeasuredValueShortWithCP56Time2a_create(cast(io,MeasuredValueShortWithCP56Time2a), ioa, self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD, timestamp), InformationObject) )
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
 
-            #doublepoint
-            type = DoublePointInformation
-            newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
-            io = None
-            for ioa in self.ioa_list:
-                if self.ioa_list[ioa]['type'] == type:
-                    if io == None:
-                        io = cast( DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD), InformationObject)
-                        CS101_ASDU_addInformationObject(newAsdu, io)
-                    else:
-                        CS101_ASDU_addInformationObject(newAsdu, cast( DoublePointInformation_create(cast(io,DoublePointInformation), ioa,self.ioa_list[ioa]['data'],IEC60870_QUALITY_GOOD), InformationObject) )
-            if io != None:
-                InformationObject_destroy(io)
-                IMasterConnection_sendASDU(connection, newAsdu)
-            CS101_ASDU_destroy(newAsdu)
-
-
-            IMasterConnection_sendACT_TERM(connection, asdu)
+                IMasterConnection_sendACT_TERM(connection, asdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
         else:
             IMasterConnection_sendACT_CON(connection, asdu, True)
 
@@ -199,7 +285,6 @@ class IEC60870_5_104_server:
         return True
     
     # IOAs Handlers
-
     def read(self, param, connection, asdu, ioa):
         if ioa in self.ioa_list:
             # update data
@@ -238,11 +323,23 @@ class IEC60870_5_104_server:
             if self.ioa_list[ioa]['event'] == True:
                 newAsdu = CS101_ASDU_create(self.alParams, False, CS101_COT_SPONTANEOUS, 0, 1, False, False)
                 if self.ioa_list[ioa]['type'] == MeasuredValueScaled:
+                    self.ioa_list[ioa]['data'] = int(float(data))
                     io = cast(MeasuredValueScaled_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 elif self.ioa_list[ioa]['type'] == SinglePointInformation:
+                    self.ioa_list[ioa]['data'] = int(float(data))
                     io = cast(SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 elif self.ioa_list[ioa]['type'] == DoublePointInformation:
+                    self.ioa_list[ioa]['data'] = int(float(data))
                     io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == MeasuredValueShort:
+                    self.ioa_list[ioa]['data'] = float(data)
+                    io = cast(MeasuredValueShort_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == SingleCommand:
+                    self.ioa_list[ioa]['data'] = int(float(data))
+                    io = cast(SingleCommand_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == DoubleCommand:
+                    self.ioa_list[ioa]['data'] = int(float(data))
+                    io = cast(DoubleCommand_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 else:
                     return -1
 

@@ -1,5 +1,6 @@
 import asyncio
 import time
+from typing import Dict
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ import os
 from lib.libiec60870server import IEC60870_5_104_server
 import logging
 import random
+from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
 
 from lib.lib60870 import (
     SinglePointInformation,
@@ -19,13 +21,13 @@ from lib.lib60870 import (
     DoublePointInformation
 )
 
-load_dotenv()
-
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 FASTAPI_HOST = os.getenv("FASTAPI_HOST")
 FASTAPI_PORT = int(os.getenv("FASTAPI_PORT"))
@@ -97,164 +99,235 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory storage for items
+circuit_breakers: Dict[str, CircuitBreakerItem] = {}
+telesignals: Dict[str, TeleSignalItem] = {}
+telemetries: Dict[str, TelemetryItem] = {}
+
 # TODO SOCKETS
 @sio.event
 async def connect(sid, environ):
     """Handle new connections."""
-    logger.info(f"Client connected: {sid}")
+    logger.info(f"Socket client connected: {sid}")
     
-    # Send all current IOA values to the new client
-    ioa_data = {}
-    for ioa, item in IEC_SERVER.ioa_list.items():
-        if item['type'] == MeasuredValueScaled:
-            ioa_type = 'telemetry'
-        elif item['type'] == SinglePointInformation:
-            ioa_type = 'telesignal'
-        else:
-            ioa_type = 'unknown'
-            
-        ioa_data[ioa] = {
-            'ioa': ioa,
-            'value': item['data'],
-            'type': ioa_type,
-            'auto_mode': item.get('auto_mode', False)
-        }
-    
-    await sio.emit('ioa_values', ioa_data, room=sid)
+    await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
+    await sio.emit('tele_signals', [item.model_dump() for item in telesignals.values()], room=sid)
+    await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
 
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket client disconnected: {sid}")
     
 @sio.event
-async def add_telesignal(sid, data):
-    logger.info(f'Add Telesignal: {data}')
-    ioa = int(data['ioa'])
-    name = data['name']
-    initial_value = int(data.get('value', 0))
+async def add_circuit_breaker(sid, data):
+    item = CircuitBreakerItem(**data)
+    circuit_breakers[item.id] = item
     
-    # Add a SinglePointInformation for telesignal
-    result = IEC_SERVER.add_ioa(ioa, SinglePointInformation, initial_value, None, True)
-    if result == 0:
-        # Initialize with auto_mode disabled
-        IEC_SERVER.ioa_list[ioa]['auto_mode'] = False
-        await sio.emit('telesignal_added', {
-            'ioa': ioa,
-            'name': name,
-            'value': initial_value,
-            'auto_mode': False
-        })
-    else:
-        await sio.emit('error', {'message': f'Failed to add telesignal IOA {ioa}'})
+    # TODO
+    IEC_SERVER.add_ioa(item.ioa_cb_status, SinglePointInformation, 0, None, True)
+    IEC_SERVER.add_ioa(item.ioa_cb_status_close, SinglePointInformation, 0, None, True)
+    
+    IEC_SERVER.add_ioa(item.ioa_control_open, SingleCommand, 0, None, True)
+    IEC_SERVER.add_ioa(item.ioa_control_close, SingleCommand, 0, None, True)
+
+    if item.is_double_point and item.ioa_cb_status_dp:
+        IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, None, True)
+        IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, None, True)
+    
+    IEC_SERVER.add_ioa(item.ioa_local_remote, SinglePointInformation, 0, None, True)
+    
+    logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
+    await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+    return {"status": "success", "message": f"Added circuit breaker {item.name}"}
+    
+@sio.event
+async def update_circuit_breaker(sid, data):
+    ioa_cb_status = data.get('ioa_cb_status')
+    # Find the item by IOA
+    for item_id, item in list(circuit_breakers.items()):
+        if item.ioa_cb_status == ioa_cb_status:
+            # Update remote status if provided
+            if 'remote' in data:
+                circuit_breakers[item_id].remote = data['remote']
+                IEC_SERVER.update_ioa(item.ioa_local_remote, data['remote'])
+                
+            # Update value if provided
+            if 'cb_status_open' in data:
+                circuit_breakers[item_id].cb_status_open = data['cb_status_open']
+                IEC_SERVER.update_ioa(item.ioa_cb_status, data['cb_status_open'])
+                
+            if 'cb_status_close' in data:
+                circuit_breakers[item_id].cb_status_close = data['cb_status_close']
+                IEC_SERVER.update_ioa(item.ioa_cb_status_close, data['cb_status_close'])
+                
+            if 'cb_status_dp' in data:
+                circuit_breakers[item_id].cb_status_dp = data['cb_status_dp']
+                IEC_SERVER.update_ioa(item.ioa_cb_status_dp, data['cb_status_dp'])
+                
+            if 'control_open' in data:
+                circuit_breakers[item_id].control_open = data['control_open']
+                IEC_SERVER.update_ioa(item.ioa_control_open, data['control_open'])
+                
+            if 'control_close' in data:
+                circuit_breakers[item_id].control_close = data['control_close']
+                IEC_SERVER.update_ioa(item.ioa_control_close, data['control_close'])
+                
+            if 'control_dp' in data:
+                circuit_breakers[item_id].control_dp = data['control_dp']
+                IEC_SERVER.update_ioa(item.ioa_control_dp, data['control_dp'])
+                
+            # Handle SBO mode update if provided
+            if 'is_sbo' in data:
+                circuit_breakers[item_id].is_sbo = data['is_sbo']
+                
+            # Handle double point mode update if provided
+            if 'is_double_point' in data:
+                circuit_breakers[item_id].is_double_point = data['is_double_point']
+            
+            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].dict()}")
+            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            return {"status": "success"}
+    
+    return {"status": "error", "message": "Circuit breaker not found"}
 
 @sio.event
-async def remove_telesignal(sid, data):
-    logger.info(f'Remove Telesignal: {data}')
-    ioa = int(data['ioa'])
-    result = IEC_SERVER.remove_ioa(ioa)
+async def remove_circuit_breaker(sid, data):
+    item_id = data.get('id')
+    if item_id and item_id in circuit_breakers:
+        item = circuit_breakers.pop(item_id)
+        # Remove all ioas from the IEC server
+        IEC_SERVER.remove_ioa(item.ioa_cb_status)
+        IEC_SERVER.remove_ioa(item.ioa_cb_status_close)
+        IEC_SERVER.remove_ioa(item.ioa_control_open)
+        IEC_SERVER.remove_ioa(item.ioa_control_close)
+        if item.is_double_point and item.ioa_cb_status_dp:
+            IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
+            IEC_SERVER.remove_ioa(item.ioa_control_dp)
+        IEC_SERVER.remove_ioa(item.ioa_local_remote)
+        
+        logger.info(f"Removed circuit breaker: {item.name}")
+        await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+        return {"status": "success", "message": f"Removed circuit breaker {item.name}"}
+    return {"status": "error", "message": "Circuit breaker not found"}
+    
+@sio.event
+async def add_telesignal(sid, data):
+    item = TeleSignalItem(**data)
+    telesignals[item.id] = item
+    
+    # Add a SinglePointInformation for telesignal
+    result = IEC_SERVER.add_ioa(item.ioa, SinglePointInformation, item.value, None, True)
     if result == 0:
-        await sio.emit('telesignal_removed', {'ioa': ioa})
+        # Initialize with auto_mode disabled
+        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
     else:
-        await sio.emit('error', {'message': f'Failed to remove telesignal IOA {ioa}'})
+        await sio.emit('error', {'message': f'Failed to add telesignal IOA {item.ioa}'})
 
 @sio.event
 async def update_telesignal(sid, data):
-    logger.info(f'Update Telesignal: {data}')
     ioa = int(data['ioa'])
     
-    # Handle value update if provided
-    if 'value' in data:
-        value = int(data['value'])
-        result = IEC_SERVER.update_ioa(ioa, value)
-
-        if result != 0:
-            await sio.emit('error', {'message': f'Failed to update telesignal IOA {ioa}'})
-        else:
-            logger.info(f'Telesignal Updated!: {data}')
-            await sio.emit('telesignal_updated', {'ioa': ioa, 'value': value})
+    # Find the item by IOA
+    for item_id, item in list(telesignals.items()):
+        if item.ioa == ioa:
+            # Update auto_mode if provided
+            if 'auto_mode' in data:
+                telesignals[item_id].auto_mode = data['auto_mode']
+                logger.info(f"Telesignal set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
+            
+            # Update value if provided
+            if 'value' in data:
+                new_value = data['value']
+                telesignals[item_id].value = new_value
+                result = IEC_SERVER.update_ioa(ioa, new_value)
+                logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
+            
+            await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+            return {"status": "success"}
     
-    # Handle auto mode update if provided
-    if 'auto_mode' in data:
-        auto_mode = data['auto_mode']
-        # Store auto_mode in the IOA list
-        if ioa in IEC_SERVER.ioa_list:
-            IEC_SERVER.ioa_list[ioa]['auto_mode'] = auto_mode
-            logger.info(f'Auto mode for telesignal {ioa} set to: {auto_mode}')
-            # Send confirmation to clients
-            await sio.emit('telesignal_automode_updated', {'ioa': ioa, 'auto_mode': auto_mode})
+    return {"status": "error", "message": "Telesignal not found"}
+
+@sio.event
+async def remove_telesignal(sid, data):
+    item_id = data.get('id')
+    if item_id and item_id in telesignals:
+        item = telesignals.pop(item_id)
+        
+        # Remove the IOA from the IEC server
+        result = IEC_SERVER.remove_ioa(item.ioa)
+        if result != 0:
+            await sio.emit('error', {'message': f'Failed to remove telesignal IOA {item.ioa}'})
+        
+        logger.info(f"Removed telesignal: {item.name}")
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+        return {"status": "success", "message": f"Removed telesignal {item.name}"}
+    return {"status": "error", "message": "Telesignal not found"}
 
 @sio.event
 async def add_telemetry(sid, data):
-    logger.info(f'Add Telemetry: {data}')
-    ioa = int(data['ioa'])
-    name = data['name']
-    initial_value = int(float(data.get('value', 0)))
-    unit = data.get('unit', '')
-    scale_factor = float(data.get('scale_factor', 1.0))
-    min_value = float(data.get('min_value', 0))
-    max_value = float(data.get('max_value', 100))
+    item = TelemetryItem(**data)
+    telemetries[item.id] = item
+    # Scale value as needed for integer representation
+    scaled_value = int(item.value / item.scale_factor)
     
-    # Add a MeasuredValueScaled for telemetry
-    result = IEC_SERVER.add_ioa(ioa, MeasuredValueScaled, initial_value, None, True)
+    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, None, True)
     if result == 0:
-        # Initialize with auto_mode disabled and store min/max values
-        IEC_SERVER.ioa_list[ioa]['auto_mode'] = False
-        IEC_SERVER.ioa_list[ioa]['min_value'] = min_value
-        IEC_SERVER.ioa_list[ioa]['max_value'] = max_value
-        await sio.emit('telemetry_added', {
-            'ioa': ioa,
-            'name': name,
-            'value': initial_value,
-            'unit': unit,
-            'scale_factor': scale_factor,
-            'min_value': min_value,
-            'max_value': max_value,
-            'auto_mode': False
-        })
+        # Initialize with auto_mode disabled
+        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+        IEC_SERVER.ioa_list[item.ioa]['min_value'] = item.min_value
+        IEC_SERVER.ioa_list[item.ioa]['max_value'] = item.max_value
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
     else:
-        await sio.emit('error', {'message': f'Failed to add telemetry IOA {ioa}'})
-
-@sio.event
-async def remove_telemetry(sid, data):
-    logger.info(f'Remove Telemetry: {data}')
-    ioa = int(data['ioa'])
-    result = IEC_SERVER.remove_ioa(ioa)
-    if result == 0:
-        await sio.emit('telemetry_removed', {'ioa': ioa})
-    else:
-        await sio.emit('error', {'message': f'Failed to remove telemetry IOA {ioa}'})
+        await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
+    
+    logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+    await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+    return {"status": "success", "message": f"Added telemetry {item.name}"}
 
 @sio.event
 async def update_telemetry(sid, data):
-    logger.info(f'Update Telemetry: {data}')
     ioa = int(data['ioa'])
     
-    # Handle value update if provided
-    if 'value' in data:
-        value = int(float(data['value']))  # Convert to int as required by IEC server
-        result = IEC_SERVER.update_ioa(ioa, value)
-        if result != 0:
-            await sio.emit('error', {'message': f'Failed to update telemetry IOA {ioa}'})
-        else:
-            logger.info(f'Telemetry Updated!: {data}')
-            await sio.emit('telemetry_updated', {'ioa': ioa, 'value': value})
-    
-    # Handle auto mode update if provided
-    if 'auto_mode' in data:
-        auto_mode = data['auto_mode']
-        # Store auto_mode in the IOA list
-        if ioa in IEC_SERVER.ioa_list:
-            IEC_SERVER.ioa_list[ioa]['auto_mode'] = auto_mode
+    # Find the item by IOA
+    for item_id, item in list(telemetries.items()):
+        if item.ioa == ioa:
+            # Update auto_mode if provided
+            if 'auto_mode' in data:
+                telemetries[item_id].auto_mode = data['auto_mode']
+                logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
             
-            # If auto mode is enabled, store min/max values for telemetry
-            if 'min_value' in data:
-                IEC_SERVER.ioa_list[ioa]['min_value'] = float(data['min_value'])
-            if 'max_value' in data:
-                IEC_SERVER.ioa_list[ioa]['max_value'] = float(data['max_value'])
+            # Update value if provided
+            if 'value' in data:
+                new_value = data['value']
+                telemetries[item_id].value = new_value
                 
-            logger.info(f'Auto mode for telemetry {ioa} set to: {auto_mode}')
-            # Send confirmation to clients
-            await sio.emit('telemetry_automode_updated', {'ioa': ioa, 'auto_mode': auto_mode})
+                result = IEC_SERVER.update_ioa(ioa, new_value)
+                if result != 0:
+                    await sio.emit('error', {'message': f'Failed to update telemetry IOA {ioa}'})
+                
+                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
+            
+            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+            return {"status": "success"}
+    
+    return {"status": "error", "message": "Telemetry not found"}
+
+@sio.event
+async def remove_telemetry(sid, data):
+    item_id = data.get('id')
+    if item_id and item_id in telemetries:
+        item = telemetries.pop(item_id)
+        
+        # Remove the IOA from the IEC server
+        result = IEC_SERVER.remove_ioa(item.ioa)
+        if result != 0:
+            await sio.emit('error', {'message': f'Failed to remove telemetry IOA {item.ioa}'})
+        
+        logger.info(f"Removed telemetry: {item.name}")
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+        return {"status": "success", "message": f"Removed telemetry {item.name}"}
+    return {"status": "error", "message": "Telemetry not found"}
     
 async def poll_ioa_values():
     """
@@ -265,82 +338,93 @@ async def poll_ioa_values():
     logger.info("Starting IOA polling task")
     
     # Store last update times
-    last_updates = {}
+    last_update_times = {
+        "circuit_breakers": {},
+        "telesignals": {},
+        "telemetries": {}
+    }
     
     while True:
         try:
-            # Create an empty dictionary to hold all current IOA values
-            ioa_data = {}
             current_time = time.time()
+            has_updates = {
+                "circuit_breakers": False,
+                "telesignals": False,
+                "telemetries": False
+            }
             
-            # Process auto mode for each IOA
-            for ioa, item in IEC_SERVER.ioa_list.items():
-                value = item['data']
-                auto_mode = item.get('auto_mode', False)
-                interval = item.get('interval', 1)  # Default interval of 1 second
-
-                # Initialize ioa_type before conditional blocks
-                if item['type'] == MeasuredValueScaled:
-                    ioa_type = 'telemetry'
-                elif item['type'] == SinglePointInformation:
-                    ioa_type = 'telesignal'
-                else:
-                    ioa_type = 'unknown'
-
-                if auto_mode and (ioa not in last_updates or (current_time - last_updates.get(ioa, 0)) >= interval):
-
-                    # Determine type based on item['type']
-                    if item['type'] == MeasuredValueScaled:
-                        # Handle auto mode for telemetry - gradually change values
-                        if auto_mode:
-                            # Get min and max values (if available, otherwise use defaults)
-                            min_value = item.get('min_value', 0)
-                            max_value = item.get('max_value', 100)
-                            scale_factor = item.get('scale_factor', 1.0)
-                            
-                            # Calculate precision based on scale factor
-                            if scale_factor >= 1:
-                                precision = 0
-                            else:
-                                # Count decimal places in scale factor (e.g., 0.01 has 2 decimal places)
-                                precision = len(str(scale_factor).split('.')[-1].rstrip('0')) if '.' in str(scale_factor) else 0
-                            
-                            # Generate a random value between min_value and max_value with appropriate precision
-                            new_value = round(random.uniform(min_value, max_value), precision)
-                            
-                            # Optional: Sometimes make smaller changes to avoid jumping too much
-                            if random.random() > 0.2:  # 80% of the time, make smaller changes
-                                # Make a change of up to 10% of the range
-                                max_change = 0.1 * (max_value - min_value)
-                                change = round(random.uniform(-max_change, max_change), precision)
-                                new_value = round(max(min_value, min(max_value, value + change)), precision)
-                                
-                            # Update the value in the IEC server
-                            IEC_SERVER.update_ioa(ioa, int(new_value))
-                            value = int(new_value)  # Update for the response
-                            
-                            last_updates[ioa] = current_time
-                            
-                    elif item['type'] == SinglePointInformation:
-                        # Handle auto mode for telesignal - randomly toggle state
-                        if auto_mode:  # 10% chance to toggle each poll
-                            new_value = 1 if value == 0 else 0
-                            IEC_SERVER.update_ioa(ioa, new_value)
-                            value = new_value  # Update the value for the response
-                            
-                            last_updates[ioa] = current_time
+            # Simulate circuit breakers in auto mode
+            # for item_id, item in list(circuit_breakers.items()):
+            #     # Skip if not due for update yet
+            #     last_update = last_update_times["circuit_breakers"].get(item_id, 0)
+            #     if current_time - last_update < item.interval:
+            #         continue
                     
-                ioa_data[ioa] = {
-                    'ioa': ioa,
-                    'value': value,
-                    'type': ioa_type,
-                    'auto_mode': auto_mode
-                }
+            #     if not item.remote:  # Only change values if not in remote mode
+            #         continue
+                    
+            #     new_value = random.randint(item.min_value, item.max_value)
+            #     if new_value != item.value:
+            #         circuit_breakers[item_id].value = new_value
+            #         IEC_SERVER.update_ioa(item.ioa_data, new_value)
+            #         if item.is_double_point and item.ioa_data_dp:
+            #             IEC_SERVER.update_ioa(item.ioa_data_dp, new_value)
+                        
+            #         # Record update time
+            #         last_update_times["circuit_breakers"][item_id] = current_time
+            #         has_updates["circuit_breakers"] = True
             
-            logger.info(f"Sending IOA values: {ioa_data}")
-            await sio.emit('ioa_values', ioa_data)
+            # Simulate telesignals in auto mode
+            for item_id, item in list(telesignals.items()):
+                # Skip if not due for update yet
+                last_update = last_update_times["telesignals"].get(item_id, 0)
+                if current_time - last_update < item.interval:
+                    continue
+                
+                # Check if auto mode is enabled
+                if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                    continue
+                    
+                new_value = random.randint(item.min_value, item.max_value)
+                if new_value != item.value:
+                    telesignals[item_id].value = new_value
+                    IEC_SERVER.update_ioa(item.ioa, new_value)
+                    
+                    # Record update time
+                    last_update_times["telesignals"][item_id] = current_time
+                    has_updates["telesignals"] = True
             
-            # Short sleep to avoid CPU overload (still check frequently)
+            # Simulate telemetry in auto mode
+            for item_id, item in list(telemetries.items()):
+                # Skip if not due for update yet
+                last_update = last_update_times["telemetries"].get(item_id, 0)
+                if current_time - last_update < item.interval:
+                    continue
+                    
+                # Check if auto mode is enabled
+                if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                    continue
+                    
+                new_value = random.uniform(item.min_value, item.max_value)
+                telemetries[item_id].value = round(new_value, 2)
+                scaled_value = int(new_value / item.scale_factor)
+                IEC_SERVER.update_ioa(item.ioa, scaled_value)
+                
+                logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
+                
+                # Record update time
+                last_update_times["telemetries"][item_id] = current_time
+                has_updates["telemetries"] = True
+                
+            # Broadcast updates only if there were changes
+            if has_updates["circuit_breakers"] and circuit_breakers:
+                await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            if has_updates["telesignals"] and telesignals:
+                await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+            if has_updates["telemetries"] and telemetries:
+                await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+                
+            # Use a shorter sleep time to check more frequently, but not burn CPU
             await asyncio.sleep(0.1)
             
         except Exception as e:
@@ -368,11 +452,11 @@ async def lifespan(app: FastAPI):
     try:
         await polling_task
     except asyncio.CancelledError:
-        logger.info("IOA polling task cancelled") 
-    
-    IEC_SERVER.stop()
-    logger.info("IEC 60870-5-104 server stopped successfully")
-    logger.info("Application shutdown")
+        logger.info("IOA polling task cancelled")
+    finally:
+        IEC_SERVER.stop()
+        logger.info("IEC 60870-5-104 server stopped successfully")
+        logger.info("Application shutdown")
     
 app = FastAPI(lifespan=lifespan)
 socket_app = socketio.ASGIApp(sio, app)
