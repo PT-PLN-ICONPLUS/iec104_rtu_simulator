@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iec104-simulator-backend
+  namespace: scada-grita
+  labels:
+    app: iec104-simulator-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iec104-simulator-backend
+  template:
+    metadata:
+      labels:
+        app: iec104-simulator-backend
+    spec:
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: iec104-simulator-backend
+          image: 10.14.73.59/scada/iec104-simulator-backend
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 6006
+            - containerPort: 2451
+          envFrom:
+            - configMapRef:
+                name: iconics-iec104-simulator-backend
+          volumeMounts:
+            - name: backend-config
+              mountPath: /app/config
+      volumes:
+        - name: backend-config
+          configMap:
+            name: iconics-iec104-simulator-backend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iec104-simulator-backend-service
+  namespace: scada-grita
+  labels:
+    app: iec104-simulator-backend
+spec:
+  type: NodePort
+  selector:
+    app: iec104-simulator-backend
+  ports:
+    - name: fastapi-port
+      port: 6006
+      targetPort: 6006
+      nodePort: 30606
+      protocol: TCP
+    - name: iec104-port
+      port: 2451
+      targetPort: 2451
+      nodePort: 30451
+      protocol: TCP

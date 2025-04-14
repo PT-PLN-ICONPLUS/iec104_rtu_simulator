@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iconics-iec104-simulator-frontend
+  namespace: scada-grita
+data:
+  REACT_PORT: "4051"
+  FASTAPI_HOST: "10.14.73.59"
+  FASTAPI_PORT: "30606"
