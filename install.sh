@@ -18,8 +18,8 @@ REACT_PORT=$6
 REACT_NODEPORT=$7
 FASTAPI_HOST=$8
 
-BACKEND_IMAGE_TAG="iec104-simulator-backend:$IMAGE_TAG"
-FRONTEND_IMAGE_TAG="iec104-simulator-frontend:$IMAGE_TAG"
+BACKEND_IMAGE_TAG="iec104-simulator-backend-$IMAGE_TAG"
+FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
 REGISTRY="10.14.73.59/scada"
 
 echo "Building Docker images..."

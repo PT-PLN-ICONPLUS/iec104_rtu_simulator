@@ -29,8 +29,8 @@ else
   export IMAGE_TAG
 fi
 
-BACKEND_IMAGE_TAG="iec104-simulator-backend:$IMAGE_TAG"
-FRONTEND_IMAGE_TAG="iec104-simulator-frontend:$IMAGE_TAG"
+BACKEND_IMAGE_TAG="iec104-simulator-backend-$IMAGE_TAG"
+FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
 REGISTRY="10.14.73.59/scada"
 
 echo "Deleting Kubernetes resources..."
