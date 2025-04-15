@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: iconics-iec104-simulator-backend
+  name: iconics-iec104-simulator-backend-${IMAGE_TAG}
   namespace: scada-grita
 data:
   FASTAPI_HOST: "0.0.0.0"
-  FASTAPI_PORT: "6006"
+  FASTAPI_PORT: "${FASTAPI_PORT}"
   IEC_104_SERVER_HOST: "0.0.0.0"
-  IEC_104_SERVER_PORT: "2451"
+  IEC_104_SERVER_PORT: "${IEC104_PORT}"

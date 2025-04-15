@@ -1,60 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: iec104-simulator-backend
+  name: iec104-simulator-backend-${IMAGE_TAG}
   namespace: scada-grita
   labels:
-    app: iec104-simulator-backend
+    app: iec104-simulator-backend-${IMAGE_TAG}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: iec104-simulator-backend
+      app: iec104-simulator-backend-${IMAGE_TAG}
   template:
     metadata:
       labels:
-        app: iec104-simulator-backend
+        app: iec104-simulator-backend-${IMAGE_TAG}
     spec:
       imagePullSecrets:
         - name: harbor-secret
       containers:
-        - name: iec104-simulator-backend
-          image: 10.14.73.59/scada/iec104-simulator-backend
+        - name: iec104-simulator-backend-${IMAGE_TAG}
+          image: 10.14.73.59/scada/iec104-simulator-backend-${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
-            - containerPort: 6006
-            - containerPort: 2451
+            - containerPort: ${FASTAPI_PORT}
+            - containerPort: ${IEC104_PORT}
           envFrom:
             - configMapRef:
-                name: iconics-iec104-simulator-backend
+                name: iconics-iec104-simulator-backend-${IMAGE_TAG}
           volumeMounts:
-            - name: backend-config
+            - name: backend-${IMAGE_TAG}-config
               mountPath: /app/config
       volumes:
-        - name: backend-config
+        - name: backend-${IMAGE_TAG}-config
           configMap:
-            name: iconics-iec104-simulator-backend
+            name: iconics-iec104-simulator-backend-${IMAGE_TAG}
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: iec104-simulator-backend-service
+  name: iec104-simulator-backend-${IMAGE_TAG}-service
   namespace: scada-grita
   labels:
-    app: iec104-simulator-backend
+    app: iec104-simulator-backend-${IMAGE_TAG}
 spec:
   type: NodePort
   selector:
-    app: iec104-simulator-backend
+    app: iec104-simulator-backend-${IMAGE_TAG}
   ports:
     - name: fastapi-port
-      port: 6006
-      targetPort: 6006
-      nodePort: 30606
+      port: ${FASTAPI_PORT}
+      targetPort: ${FASTAPI_PORT}
+      nodePort: ${FASTAPI_NODEPORT}
       protocol: TCP
     - name: iec104-port
-      port: 2451
-      targetPort: 2451
-      nodePort: 30451
+      port: ${IEC104_PORT}
+      targetPort: ${IEC104_PORT}
+      nodePort: ${IEC104_NODEPORT}
       protocol: TCP

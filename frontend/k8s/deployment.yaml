@@ -1,50 +1,50 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: iec104-simulator-frontend
+  name: iec104-simulator-frontend-${IMAGE_TAG}
   namespace: scada-grita
   labels:
-    app: iec104-simulator-frontend
+    app: iec104-simulator-frontend-${IMAGE_TAG}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: iec104-simulator-frontend
+      app: iec104-simulator-frontend-${IMAGE_TAG}
   template:
     metadata:
       labels:
-        app: iec104-simulator-frontend
+        app: iec104-simulator-frontend-${IMAGE_TAG}
     spec:
       imagePullSecrets:
         - name: harbor-secret
       containers:
-        - name: iec104-simulator-frontend
-          image: 10.14.73.59/scada/iec104-simulator-frontend
+        - name: iec104-simulator-frontend-${IMAGE_TAG}
+          image: 10.14.73.59/scada/iec104-simulator-frontend-${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
-            - containerPort: 4051
+            - containerPort: ${REACT_PORT}
           envFrom:
             - configMapRef:
-                name: iconics-iec104-simulator-frontend
+                name: iconics-iec104-simulator-frontend-${IMAGE_TAG}
       volumes:
-        - name: frontend-config
+        - name: frontend-${IMAGE_TAG}-config
           configMap:
-            name: iconics-iec104-simulator-frontend
+            name: iconics-iec104-simulator-frontend-${IMAGE_TAG}
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: iec104-simulator-frontend-service
+  name: iec104-simulator-frontend-${IMAGE_TAG}-service
   namespace: scada-grita
   labels:
-    app: iec104-simulator-frontend
+    app: iec104-simulator-frontend-${IMAGE_TAG}
 spec:
   type: NodePort
   selector:
-    app: iec104-simulator-frontend
+    app: iec104-simulator-frontend-${IMAGE_TAG}
   ports:
-    - port: 4051
-      targetPort: 4051
-      nodePort: 30051
+    - port: ${REACT_PORT}
+      targetPort: ${REACT_PORT}
+      nodePort: ${REACT_NODEPORT}
       protocol: TCP
