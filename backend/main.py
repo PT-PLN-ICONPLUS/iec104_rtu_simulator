@@ -121,6 +121,21 @@ async def disconnect(sid):
     logger.info(f"Socket client disconnected: {sid}")
     
 @sio.event
+async def get_initial_data(sid):
+    """Send initial data to the frontend."""
+    try:
+        data = {
+            "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
+            "telesignals": [item.model_dump() for item in telesignals.values()],
+            "telemetries": [item.model_dump() for item in telemetries.values()],
+        }
+        await sio.emit('get_initial_data_response', data, room=sid)
+        logger.info(f"Initial data sent to {sid}")
+    except Exception as e:
+        logger.error(f"Error fetching initial data: {e}")
+        await sio.emit('get_initial_data_error', {"error": "Failed to fetch initial data"}, room=sid)
+    
+@sio.event
 async def add_circuit_breaker(sid, data):
     item = CircuitBreakerItem(**data)
     circuit_breakers[item.id] = item

@@ -13,6 +13,31 @@ function App() {
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
 
   useEffect(() => {
+    // Emit 'get_initial_data' to request initial data
+    socket.emit('get_initial_data');
+
+    // Listen for the response
+    socket.on('get_initial_data_response', (response: any) => {
+      console.log('Initial data received:', response);
+      setCircuitBreakers(response.circuit_breakers || []);
+      setTeleSignals(response.telesignals || []);
+      setTeleMetries(response.telemetries || []);
+    });
+
+    // Handle errors
+    socket.on('get_initial_data_error', (error: any) => {
+      console.error('Error fetching initial data:', error);
+      alert('Failed to fetch initial data. Please check the console for details.');
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off('get_initial_data_response');
+      socket.off('get_initial_data_error');
+    };
+  }, []);
+
+  useEffect(() => {
     socket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
       console.log('Received circuit breakers update:', data);
       setCircuitBreakers(data);
