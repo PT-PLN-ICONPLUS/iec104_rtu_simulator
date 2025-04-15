@@ -153,9 +153,85 @@ function App() {
     }
   };
 
+  const exportData = () => {
+    socket.emit('export_data');
+
+    socket.on('export_data_response', (data) => {
+      console.log('Exported data:', data);
+
+      // Validate the structure of the data
+      if (!data.circuit_breakers || !data.telesignals || !data.telemetries) {
+        alert('Invalid data structure received from the server');
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'exported_data.json';
+      link.click();
+    });
+
+    socket.on('export_data_error', (error) => {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please check the console for details.');
+    });
+  };
+
+  const importData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        socket.emit('import_data', data);
+
+        socket.on('import_data_response', (response) => {
+          console.log('Import successful:', response);
+          alert('Data imported successfully');
+        });
+
+        socket.on('import_data_error', (error) => {
+          console.error('Error importing data:', error);
+          alert('Failed to import data. Please check the console for details.');
+        });
+      } catch (error) {
+        console.error('Error parsing file:', error);
+        alert('Invalid file format');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-w-screen">
-      <h1 className="text-3xl font-bold py-3 text-center">IEC104 Server Simulator</h1>
+      <div className="flex justify-between items-center py-3 px-4 border-b">
+        <div className="flex items-center space-x-2">
+          <img src="/iec.ico" alt="IEC Icon" className="w-6 h-6" />
+          <p className="text-2xl font-bold">IEC104 Server Simulator</p>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={exportData}
+            className="bg-blue-500 text-white px-2 py-1  rounded border border-black hover:bg-blue-600"
+          >
+            Export
+          </button>
+          <label
+            htmlFor="import-file"
+            className="bg-green-500 text-white px-2 py-1 rounded border border-black hover:bg-green-600 cursor-pointer"
+          >
+            Import
+          </label>
+          <input
+            id="import-file"
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => e.target.files && importData(e.target.files[0])}
+          />
+        </div>
+      </div>
 
       <div className="flex flex-row w-full min-h-screen">
         {/* Circuit Breaker Section */}

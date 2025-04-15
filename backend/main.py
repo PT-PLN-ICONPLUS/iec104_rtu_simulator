@@ -12,6 +12,8 @@ from lib.libiec60870server import IEC60870_5_104_server
 import logging
 import random
 from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
+from fastapi.responses import JSONResponse
+from fastapi import HTTPException
 
 from lib.lib60870 import (
     SinglePointInformation,
@@ -329,6 +331,52 @@ async def remove_telemetry(sid, data):
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
     
+@sio.event
+async def export_data(sid):
+    """Export all data as JSON via socket."""
+    try:
+        logger.info("Exporting all IOA data via socket")
+        data = {
+            "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
+            "telesignals": [item.model_dump() for item in telesignals.values()],
+            "telemetries": [item.model_dump() for item in telemetries.values()],
+        }
+        await sio.emit('export_data_response', data, room=sid)
+    except Exception as e:
+        logger.error(f"Error exporting data: {e}")
+        await sio.emit('export_data_error', {"error": "Failed to export data"}, room=sid)
+
+@sio.event
+async def import_data(sid, data):
+    """Import all data from JSON via socket."""
+    try:
+        logger.info("Importing data via socket")
+        # Clear existing data
+        circuit_breakers.clear()
+        telesignals.clear()
+        telemetries.clear()
+
+        # Populate with new data
+        for cb in data.get("circuit_breakers", []):
+            item = CircuitBreakerItem(**cb)
+            circuit_breakers[item.id] = item
+
+        for ts in data.get("telesignals", []):
+            item = TeleSignalItem(**ts)
+            telesignals[item.id] = item
+
+        for tm in data.get("telemetries", []):
+            item = TelemetryItem(**tm)
+            telemetries[item.id] = item
+            
+        await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
+        await sio.emit('import_data_response', {"status": "success"}, room=sid)
+    except Exception as e:
+        logger.error(f"Error importing data: {e}")
+        await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
+    
 async def poll_ioa_values():
     """
     Continuously poll IOA values from the IEC server and send them to frontend clients.
@@ -431,7 +479,6 @@ async def poll_ioa_values():
             logger.error(f"Error in IOA polling task: {str(e)}")
             await asyncio.sleep(3)  # Wait before retrying if there's an error
 
-# TODO ASYNC CONTEXT MANAGER
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup")
