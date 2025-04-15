@@ -194,7 +194,7 @@ class IEC60870_5_104_server:
                 newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
                 
                 # Dapatkan waktu saat ini
-                now = datetime.now()
+                now = datetime.datetime.now()
                 
                 # # Buat objek timestamp dengan waktu saat ini
                 # timestamp = struct_sCP56Time2a()

@@ -201,7 +201,7 @@ async def update_circuit_breaker(sid, data):
             if 'is_double_point' in data:
                 circuit_breakers[item_id].is_double_point = data['is_double_point']
             
-            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].dict()}")
+            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
             return {"status": "success"}
     
