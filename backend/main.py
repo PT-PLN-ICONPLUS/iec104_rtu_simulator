@@ -134,13 +134,9 @@ async def get_initial_data(sid):
     except Exception as e:
         logger.error(f"Error fetching initial data: {e}")
         await sio.emit('get_initial_data_error', {"error": "Failed to fetch initial data"}, room=sid)
-    
-@sio.event
-async def add_circuit_breaker(sid, data):
-    item = CircuitBreakerItem(**data)
-    circuit_breakers[item.id] = item
-    
-    # TODO
+        
+def add_circuit_breaker_ioa(item: CircuitBreakerItem):
+    """Add IOA for circuit breaker."""
     IEC_SERVER.add_ioa(item.ioa_cb_status, SinglePointInformation, 0, None, True)
     IEC_SERVER.add_ioa(item.ioa_cb_status_close, SinglePointInformation, 0, None, True)
     
@@ -154,6 +150,20 @@ async def add_circuit_breaker(sid, data):
     IEC_SERVER.add_ioa(item.ioa_local_remote, SinglePointInformation, 0, None, True)
     
     logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
+    
+    return 0
+    
+@sio.event
+async def add_circuit_breaker(sid, data):
+    item = CircuitBreakerItem(**data)
+    circuit_breakers[item.id] = item
+    
+    result = add_circuit_breaker_ioa(item)
+    
+    if result != 0:
+        await sio.emit('error', {'message': f'Failed to add circuit breaker IOA {item.ioa_cb_status}'})
+        return {"status": "error", "message": f"Failed to add circuit breaker {item.name}"}
+    
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
     return {"status": "success", "message": f"Added circuit breaker {item.name}"}
     
@@ -375,15 +385,38 @@ async def import_data(sid, data):
         for cb in data.get("circuit_breakers", []):
             item = CircuitBreakerItem(**cb)
             circuit_breakers[item.id] = item
+            # Add IOAs to the IEC server
+            add_circuit_breaker_ioa(item)
 
         for ts in data.get("telesignals", []):
             item = TeleSignalItem(**ts)
             telesignals[item.id] = item
+            # Add IOAs to the IEC server
+            result = IEC_SERVER.add_ioa(item.ioa, SinglePointInformation, item.value, None, True)
+            if result == 0:
+                # Initialize with auto_mode disabled
+                IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+                logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
+            else:
+                await sio.emit('error', {'message': f'Failed to add telesignal IOA {item.ioa}'})
 
         for tm in data.get("telemetries", []):
             item = TelemetryItem(**tm)
             telemetries[item.id] = item
-            
+            scaled_value = int(item.value / item.scale_factor)
+    
+            result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, None, True)
+            if result == 0:
+                # Initialize with auto_mode disabled
+                IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+                IEC_SERVER.ioa_list[item.ioa]['min_value'] = item.min_value
+                IEC_SERVER.ioa_list[item.ioa]['max_value'] = item.max_value
+                
+                logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+            else:
+                await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
+        
+        # Emit updated data to all clients 
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
         await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
         await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
