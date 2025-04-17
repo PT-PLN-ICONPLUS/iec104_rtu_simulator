@@ -11,6 +11,8 @@ fi
 # Assign arguments to variables
 IMAGE_TAG=$1
 
+export IMAGE_TAG
+
 # Define image tags and registry
 BACKEND_IMAGE_TAG="iec104-simulator-backend-$IMAGE_TAG"
 FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
