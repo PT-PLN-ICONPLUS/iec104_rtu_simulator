@@ -28,10 +28,10 @@ spec:
             - configMapRef:
                 name: iconics-iec104-simulator-backend-${IMAGE_TAG}
           volumeMounts:
-            - name: backend-${IMAGE_TAG}-config
+            - name: iconics-iec104-simulator-backend-${IMAGE_TAG}-config
               mountPath: /app/config
       volumes:
-        - name: backend-${IMAGE_TAG}-config
+        - name: iconics-iec104-simulator-backend-${IMAGE_TAG}-config
           configMap:
             name: iconics-iec104-simulator-backend-${IMAGE_TAG}
 

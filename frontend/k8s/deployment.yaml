@@ -27,7 +27,7 @@ spec:
             - configMapRef:
                 name: iconics-iec104-simulator-frontend-${IMAGE_TAG}
       volumes:
-        - name: frontend-${IMAGE_TAG}-config
+        - name: iconics-iec104-simulator-frontend-${IMAGE_TAG}-config
           configMap:
             name: iconics-iec104-simulator-frontend-${IMAGE_TAG}
 
