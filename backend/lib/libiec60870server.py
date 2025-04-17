@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class IEC60870_5_104_server:
-    def __init__(self, host, port, ioa_list=None):
+    def __init__(self, host, port, ioa_list=None, circuit_breakers=None, telesignals=None, telemetries=None):
         self.clockSyncHandler = CS101_ClockSynchronizationHandler(self.clock)
         self.interrogationHandler = CS101_InterrogationHandler(self.GI_h)
         self.asduHandler = CS101_ASDUHandler(self.ASDU_h)
@@ -42,6 +42,11 @@ class IEC60870_5_104_server:
         CS104_Slave_setReadHandler(self.slave, self.readEventHandler, None)
 
         self.ioa_list = ioa_list if ioa_list is not None else {}
+        
+        # Store references to circuit_breakers, telesignals, and telemetries
+        self.circuit_breakers = circuit_breakers
+        self.telesignals = telesignals
+        self.telemetries = telemetries
     
     def start(self):
         logger.info("Starting 104 server")
@@ -341,6 +346,15 @@ class IEC60870_5_104_server:
                 #/* Add ASDU to slave event queue - don't release the ASDU afterwards!
                 CS104_Slave_enqueueASDU(self.slave, newAsdu)
                 CS101_ASDU_destroy(newAsdu)
+                
+# Emit the updated IOA data
+            if hasattr(self, 'socketio') and self.socketio:
+                if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
+                    self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
+                elif self.telesignals and ioa in [ts.ioa for ts in self.telesignals.values()]:
+                    self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
+                elif self.telemetries and ioa in [tm.ioa for tm in self.telemetries.values()]:
+                    self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
 
         return 0
     

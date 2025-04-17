@@ -14,7 +14,6 @@ import random
 from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
-
 from lib.lib60870 import (
     SinglePointInformation,
     MeasuredValueScaled,
@@ -88,7 +87,19 @@ IOA_LIST = {
     # }
 }
 
-IEC_SERVER = IEC60870_5_104_server(IEC_SERVER_HOST, IEC_SERVER_PORT, IOA_LIST)
+# In-memory storage for items
+circuit_breakers: Dict[str, CircuitBreakerItem] = {}
+telesignals: Dict[str, TeleSignalItem] = {}
+telemetries: Dict[str, TelemetryItem] = {}
+
+IEC_SERVER = IEC60870_5_104_server(
+    IEC_SERVER_HOST, 
+    IEC_SERVER_PORT, 
+    IOA_LIST,
+    circuit_breakers=circuit_breakers,
+    telesignals=telesignals,
+    telemetries=telemetries
+)
 
 app = FastAPI()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
@@ -101,12 +112,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for items
-circuit_breakers: Dict[str, CircuitBreakerItem] = {}
-telesignals: Dict[str, TeleSignalItem] = {}
-telemetries: Dict[str, TelemetryItem] = {}
-
-# TODO SOCKETS
 @sio.event
 async def connect(sid, environ):
     """Handle new connections."""
@@ -212,7 +217,7 @@ async def update_circuit_breaker(sid, data):
                 circuit_breakers[item_id].is_double_point = data['is_double_point']
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
-            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            # await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Circuit breaker not found"}
@@ -270,7 +275,7 @@ async def update_telesignal(sid, data):
                 result = IEC_SERVER.update_ioa(ioa, new_value)
                 logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+            # await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Telesignal not found"}
@@ -335,7 +340,7 @@ async def update_telemetry(sid, data):
                 
                 logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+            # await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Telemetry not found"}
