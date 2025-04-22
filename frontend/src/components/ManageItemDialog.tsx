@@ -72,7 +72,7 @@ export function ManageItemDialog({
       // Reset form
       setName("");
       setAddress("");
-      setInterval("5");
+      setInterval("2");
       setSelectedItem("");
       setIOAControlOpen("");
       setIOAControlClose("");
@@ -309,17 +309,19 @@ export function ManageItemDialog({
                   {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
                 </div>
 
-                <div className="flex w-full items-center gap-1.5">
-                  <Label htmlFor="interval" className="w-1/3">Interval (s)</Label>
-                  <input
-                    type="number"
-                    id="interval"
-                    className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
-                    value={interval}
-                    onChange={(e) => setInterval(e.target.value)}
-                  />
-                  {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
-                </div>
+                {itemType !== "Circuit Breakers" && (
+                  <div className="flex w-full items-center gap-1.5">
+                    <Label htmlFor="interval" className="w-1/3">Interval (s)</Label>
+                    <input
+                      type="number"
+                      id="interval"
+                      className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
+                      value={interval}
+                      onChange={(e) => setInterval(e.target.value)}
+                    />
+                    {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
+                  </div>
+                )}
 
                 <div className="flex w-full items-center gap-1.5">
                   <Label htmlFor="address" className="w-1/3">

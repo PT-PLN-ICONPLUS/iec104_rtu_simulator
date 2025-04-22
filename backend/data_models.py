@@ -4,6 +4,7 @@ from typing import Optional
 class CircuitBreakerItem(BaseModel):
     id: str
     name: str
+    
     ioa_cb_status: int           # CB Status Single Open (Discrete Input)
     ioa_cb_status_close: int     # CB Status Single Close (Discrete Input)
     ioa_cb_status_dp: Optional[int] = None  # CB Status Double (Input Register)
@@ -13,12 +14,8 @@ class CircuitBreakerItem(BaseModel):
     ioa_local_remote: int        # Local/Remote Position (Coil)
     is_sbo: bool
     is_double_point: bool
-    remote: int = 0
-    value: int = 0
-    min_value: int = 0
-    max_value: int = 3
-    interval: int = 5
     
+    remote: int = 0
     cb_status_open: int = 0
     cb_status_close: int = 0
     cb_status_dp: int = 0

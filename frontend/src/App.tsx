@@ -22,18 +22,8 @@ function App() {
 
       // Update state with initial data
       setCircuitBreakers(response.circuit_breakers || []);
-      setTeleSignals(
-        response.telesignals.map((item: any) => ({
-          ...item,
-          auto_mode: item.auto_mode, // Default to true if not provided
-        }))
-      );
-      setTeleMetries(
-        response.telemetries.map((item: any) => ({
-          ...item,
-          auto_mode: item.auto_mode, // Default to true if not provided
-        }))
-      );
+      setTeleSignals(response.telesignals || []);
+      setTeleMetries(response.telemetries || []);
     });
 
     // Handle errors
@@ -73,19 +63,7 @@ function App() {
     };
   }, []);
 
-  const addCircuitBreaker = (data: {
-    name: string;
-    ioa_cb_status: number;
-    ioa_cb_status_close: number;
-    ioa_cb_status_dp?: number;
-    ioa_control_dp?: number;
-    ioa_control_open: number;
-    ioa_control_close: number;
-    ioa_local_remote: number;
-    is_double_point: boolean;
-    interval: number;
-
-  }) => {
+  const addCircuitBreaker = (data: CircuitBreakerItem) => {
     const newItem: CircuitBreakerItem = {
       id: Date.now().toString(),
       name: data.name,
@@ -98,11 +76,14 @@ function App() {
       ioa_local_remote: data.ioa_local_remote,
       is_sbo: false,
       is_double_point: data.is_double_point,
+
       remote: 0,
-      value: 0,
-      min_value: 0,
-      max_value: 3,
-      interval: data.interval
+      cb_status_open: 0,
+      cb_status_close: 0,
+      cb_status_dp: 0,
+      control_open: 0,
+      control_close: 0,
+      control_dp: 0,
     };
 
     // Send to backend
@@ -122,12 +103,7 @@ function App() {
     }
   };
 
-  const addTeleSignal = (data: {
-    name: string;
-    ioa: number;
-    interval: number;
-    value: number;
-  }) => {
+  const addTeleSignal = (data: TeleSignalItem) => {
     const newItem: TeleSignalItem = {
       id: Date.now().toString(),
       name: data.name,
@@ -135,7 +111,8 @@ function App() {
       value: data.value,
       min_value: 0,
       max_value: 1,
-      interval: data.interval
+      interval: data.interval,
+      auto_mode: false, // default to manual mode
     };
 
     if (socket) {
@@ -153,16 +130,7 @@ function App() {
     }
   };
 
-  const addTelemetry = (data: {
-    name: string;
-    ioa: number;
-    unit: string;
-    value: number;
-    min_value: number;
-    max_value: number;
-    interval: number;
-    scale_factor: number;
-  }) => {
+  const addTelemetry = (data: TelemetryItem) => {
     const newItem: TelemetryItem = {
       id: Date.now().toString(),
       name: data.name,
@@ -172,7 +140,8 @@ function App() {
       scale_factor: parseFloat(data.scale_factor?.toString() || "1"),
       min_value: data.min_value,
       max_value: data.max_value,
-      interval: data.interval
+      interval: data.interval,
+      auto_mode: false, // default to manual mode
     };
 
     if (socket) {
@@ -282,7 +251,7 @@ function App() {
           />
           {circuitBreakers.map(item => (
             <CircuitBreaker
-              key={item.id}
+              id={item.id}
               name={item.name}
               ioa_cb_status={item.ioa_cb_status}
               ioa_cb_status_close={item.ioa_cb_status_close}
@@ -291,10 +260,17 @@ function App() {
               ioa_control_open={item.ioa_control_open}
               ioa_control_close={item.ioa_control_close}
               ioa_local_remote={item.ioa_local_remote}
-              remote={item.remote}
+
               is_sbo={item.is_sbo}
               is_double_point={item.is_double_point}
-              interval={item.interval}
+
+              remote={item.remote}
+              cb_status_open={0}
+              cb_status_close={item.cb_status_close}
+              cb_status_dp={item.cb_status_dp}
+              control_open={item.control_open}
+              control_close={item.control_close}
+              control_dp={item.control_dp}
             />
           ))}
         </div>

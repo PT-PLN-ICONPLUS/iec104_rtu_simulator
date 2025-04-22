@@ -1,198 +1,136 @@
 // frontend/src/components/CircuitBreakerItem.tsx (Updated)
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import socket from "../socket";
+import { CircuitBreakerItem } from "@/lib/items";
 
-interface CircuitBreakerProps {
-  name?: string;
-  ioa_cb_status?: number;
-  ioa_cb_status_close?: number;
-  ioa_cb_status_dp?: number;
-  ioa_control_dp?: number;
-  ioa_control_open?: number;
-  ioa_control_close?: number;
-  ioa_local_remote?: number;
-  remote?: number;
-  is_sbo?: boolean;
-  is_double_point?: boolean;
-  is_mode_double_point?: boolean;
-  interval?: number;
-  onValueChange?: (value: number) => void;
-}
-
-function CircuitBreaker({
-  name = "Circuit Breaker",
-  ioa_cb_status = 0,
-  ioa_cb_status_close = 0,
-  ioa_cb_status_dp = 0,
-  ioa_control_dp = 0,
-  ioa_control_open = 0,
-  ioa_control_close = 0,
-  ioa_local_remote = 0,
-  remote = 0,
-  is_sbo = false,
-  is_double_point = false,
-  onValueChange
-}: CircuitBreakerProps) {
+function CircuitBreaker(item: CircuitBreakerItem) {
   // State variables based on your data structure
-  const [isLocal, setIsLocal] = useState(remote === 0); // Controls if remote (false) or local (true)
-  const [value, setValue] = useState(0); // 0 or 3 for invalid, 1 for open, 2 for close
-  const [isSBO, setIsSBO] = useState(is_sbo);
-  const [isDP, setIsDP] = useState(is_double_point);
+  const [isSBO, setIsSBO] = useState(item.is_sbo);
+  const [isDPMode, setIsDPMode] = useState(item.is_double_point);
+  const [isRemote, setIsRemote] = useState(item.remote === 1);
 
-  // Initialize all states to 0 (off)
-  const [, set_cb_status_open] = useState(0);
-  const [, set_cb_status_close] = useState(0);
-  const [, set_control_open] = useState(0);
-  const [, set_control_close] = useState(0);
-  const [, set_cb_status_double] = useState(0);
-  const [, set_control_double] = useState(0);
+  const [cbStatusOpen, setCbStatusOpen] = useState(item.cb_status_open);
+  const [cbStatusClose, setCbStatusClose] = useState(item.cb_status_close);
+  const [cbStatusDP, setCbStatusDP] = useState(item.cb_status_dp);
 
-  // Send initial state to backend when component mounts
-  useEffect(() => {
-    const initialData = {
-      ioa_cb_status,
-      cb_status_open: 0,
-      cb_status_close: 0,
-      control_open: 0,
-      control_close: 0,
-      cb_status_double: 0,
-      control_double: 0,
-      remote: remote,
-      is_double_point: isDP,
-      is_sbo: isSBO
-    };
 
-    socket.emit('update_circuit_breaker', initialData);
-  }, [ioa_cb_status, isDP, isSBO, remote]);
+  const handleOpen = () => {
+    if (isDPMode) {
+      // Handle open logic for double point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_dp: 1,
+        control_dp: 1
+      });
+      setCbStatusDP(1);
+    } else {
+      // Handle open logic for single point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_open: 1,
+        cb_status_close: 0,
+        control_open: 1,
+        control_close: 0
+      });
 
-  // Handle internal value change with notification to parent component
-  const handleValueChange = (newValue: number) => {
-    if (isLocal) {
-      setValue(newValue);
+      // for updating UI
+      setCbStatusOpen(1);
+      setCbStatusClose(0);
+    }
 
-      let updatedData;
+  }
 
-      if (isDP) {
-        // Double point logic
-        let newStatusDouble = 0;
-        let newControlDouble = 0;
+  const handleClose = () => {
+    if (isDPMode) {
+      // Handle close logic for double point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_dp: 2,
+        control_dp: 2
+      });
+      setCbStatusDP(2);
+    } else {
+      // Handle close logic for single point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_open: 0,
+        cb_status_close: 1,
+        control_open: 0,
+        control_close: 1
+      });
 
-        if (newValue === 1) { // Open
-          newStatusDouble = 1;
-          newControlDouble = 1;
-        } else if (newValue === 2) { // Close
-          newStatusDouble = 2;
-          newControlDouble = 2;
-        } else if (newValue === 0) { // Invalid 0
-          newStatusDouble = 0;
-          newControlDouble = 0;
-        } else if (newValue === 3) { // Invalid 3
-          newStatusDouble = 3;
-          newControlDouble = 3;
-        }
+      // for updating UI
+      setCbStatusOpen(0);
+      setCbStatusClose(1);
+    }
+  }
 
-        set_cb_status_double(newStatusDouble);
-        set_control_double(newControlDouble);
+  const handleTrip = () => {
+    if (isDPMode) {
+      // Handle trip logic for double point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_dp: item.cb_status_dp === 1 ? 2 : 1,
+        control_dp: item.cb_status_dp === 1 ? 2 : 1
+      });
+      setCbStatusDP(item.cb_status_dp === 1 ? 2 : 1);
+    } else {
+      // Handle trip logic for single point
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_open: item.cb_status_open === 1 ? 0 : 1,
+        cb_status_close: item.cb_status_close === 1 ? 0 : 1,
+        control_open: item.cb_status_open === 1 ? 0 : 1,
+        control_close: item.cb_status_close === 1 ? 0 : 1
+      });
 
-        updatedData = {
-          ioa_cb_status,
-          cb_status_dp: newStatusDouble,
-          control_dp: newControlDouble,
-          remote: isLocal ? 0 : 1,
-          is_double_point: isDP,
-          is_sbo: isSBO
-        };
-      } else {
-        // Single point logic
-        let newStatusOpen = 0;
-        let newStatusClose = 0;
-        let newControlOpen = 0;
-        let newControlClose = 0;
+      // for updating UI
+      setCbStatusOpen(item.cb_status_open === 1 ? 0 : 1);
+      setCbStatusClose(item.cb_status_close === 1 ? 0 : 1);
+    }
+  }
 
-        if (newValue === 0) { // Open (value 0)
-          newStatusOpen = 1;
-          newStatusClose = 0;
-          newControlOpen = 1;
-          newControlClose = 0;
-        } else if (newValue === 1) { // Close (value 1)
-          newStatusOpen = 0;
-          newStatusClose = 1;
-          newControlOpen = 0;
-          newControlClose = 1;
-        }
-
-        set_cb_status_open(newStatusOpen);
-        set_cb_status_close(newStatusClose);
-        set_control_open(newControlOpen);
-        set_control_close(newControlClose);
-
-        updatedData = {
-          ioa_cb_status,
-          cb_status_open: newStatusOpen,
-          cb_status_close: newStatusClose,
-          control_open: newControlOpen,
-          control_close: newControlClose,
-          remote: isLocal ? 0 : 1,
-          is_double_point: isDP,
-          is_sbo: isSBO
-        };
+  const handleInvalid = (type = 0) => {
+    if (isDPMode) {
+      // Handle invalid logic for double point
+      if (type === 0) {
+        // Set to invalid 0
+        socket.emit('update_circuit_breaker', {
+          id: item.id,
+          cb_status_dp: 0,
+          control_dp: 0
+        });
+        setCbStatusDP(0);
       }
-
-      // Send to backend
-      socket.emit('update_circuit_breaker', updatedData);
-
-      if (onValueChange) {
-        onValueChange(newValue);
+      else if (type === 3) {
+        // Set to invalid 3
+        socket.emit('update_circuit_breaker', {
+          id: item.id,
+          cb_status_dp: 3,
+          control_dp: 3
+        });
+        setCbStatusDP(3);
       }
     }
-  };
+  }
 
-  const toggleLocalRemote = (isRemote: boolean) => {
-    setIsLocal(!isRemote);
-
+  const toggleLocalRemote = () => {
     socket.emit('update_circuit_breaker', {
-      ioa_cb_status: ioa_cb_status,
+      id: item.id,
       remote: isRemote ? 1 : 0
     });
+
+    setIsRemote(!isRemote);
   };
 
-  const toggleSBO = (enabled: boolean) => {
-    setIsSBO(enabled);
-
-    socket.emit('update_circuit_breaker', {
-      ioa_cb_status: ioa_cb_status,
-      is_sbo: enabled
-    });
+  const toggleSBO = () => {
+    setIsSBO(!isSBO);
   };
 
   const toggleDP = () => {
-    const newDP = !isDP;
-    setIsDP(newDP);
-
-    // Reset value to ensure proper state transition
-    setValue(0);
-
-    // Reset all status variables
-    set_cb_status_open(0);
-    set_cb_status_close(0);
-    set_control_open(0);
-    set_control_close(0);
-    set_cb_status_double(0);
-    set_control_double(0);
-
-    // Update backend about mode change
-    socket.emit('update_circuit_breaker', {
-      ioa_cb_status: ioa_cb_status,
-      is_double_point: newDP,
-      cb_status_open: 0,
-      cb_status_close: 0,
-      control_open: 0,
-      control_close: 0,
-      cb_status_double: 0,
-      control_double: 0
-    });
+    setIsDPMode(!isDPMode);
   };
 
   return (
@@ -203,15 +141,15 @@ function CircuitBreaker({
           <div className="flex flex-row">
             <div className="flex w-full justify-around gap-3">
               <div
-                className={`w-24 h-24 rounded-full border-2 border-green-600 ${isDP
-                  ? (value === 1 || value === 3) ? 'bg-green-600' : 'bg-green-200 opacity-50'
-                  : value === 0 ? 'bg-green-600' : 'bg-green-200 opacity-50'
+                className={`green-light w-24 h-24 rounded-full border-2 border-green-600 ${isDPMode
+                  ? (cbStatusDP === 1 || cbStatusDP === 3) ? 'bg-green-600' : 'bg-green-200 opacity-50'
+                  : (cbStatusOpen === 1 && cbStatusClose === 0) ? 'bg-green-600' : 'bg-green-200 opacity-50'
                   }`}
               ></div>
               <div
-                className={`w-24 h-24 rounded-full border-2 border-red-600 ${isDP
-                  ? (value === 2 || value === 3) ? 'bg-red-600' : 'bg-red-200 opacity-50'
-                  : value === 1 ? 'bg-red-600' : 'bg-red-200 opacity-50'
+                className={`red-light w-24 h-24 rounded-full border-2 border-red-600 ${isDPMode
+                  ? (cbStatusDP === 2 || cbStatusDP === 3) ? 'bg-red-600' : 'bg-red-200 opacity-50'
+                  : (cbStatusClose === 1 && cbStatusOpen === 0) ? 'bg-red-600' : 'bg-red-200 opacity-50'
                   }`}
               ></div>
             </div>
@@ -220,19 +158,19 @@ function CircuitBreaker({
           {/* Control buttons */}
           <div className="flex flex-row gap-2 justify-around my-1">
             <Button
-              onClick={() => isDP ? handleValueChange(1) : handleValueChange(0)}
-              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-green-600 border-2 border-black ${!isLocal ? 'opacity-50' : ''
+              onClick={() => handleOpen()}
+              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-green-600 border-2 border-black ${isRemote ? 'opacity-50' : ''
                 }`}
-              disabled={!isLocal}
+              disabled={isRemote}
             >
               Open
             </Button>
 
             <Button
-              onClick={() => isDP ? handleValueChange(2) : handleValueChange(1)}
-              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-red-600 border-2 border-black ${!isLocal ? 'opacity-50' : ''
+              onClick={() => handleClose()}
+              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-red-600 border-2 border-black ${isRemote ? 'opacity-50' : ''
                 }`}
-              disabled={!isLocal}
+              disabled={isRemote}
             >
               Close
             </Button>
@@ -243,33 +181,30 @@ function CircuitBreaker({
             <Button
               size="sm"
               variant="outline"
-              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDP || !isLocal) ? 'opacity-50 cursor-not-allowed' : ''
+              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDPMode || isRemote) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={!isDP || !isLocal}
-              onClick={() => isDP && handleValueChange(0)} // Set to invalid 0
+              disabled={!isDPMode || isRemote}
+              onClick={() => isDPMode && handleInvalid(0)} // Set to invalid 0
             >
               Invalid 0
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isLocal || value === 0 || value === 3) ? 'opacity-50 cursor-not-allowed' : ''
+              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(item.remote == 1 || item.cb_status_dp === 0 || item.cb_status_dp === 3) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={!isLocal || value === 0 || value === 3}
-              onClick={() => {
-                if (value === 1) handleValueChange(2);
-                else if (value === 2) handleValueChange(1);
-              }}
+              disabled={item.remote == 1 || item.cb_status_dp === 0 || item.cb_status_dp === 3}
+              onClick={() => isDPMode && handleTrip()} // Trip
             >
               Trip
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDP || !isLocal) ? 'opacity-50 cursor-not-allowed' : ''
+              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDPMode || item.remote == 1) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={!isDP || !isLocal}
-              onClick={() => isDP && handleValueChange(3)} // Set to invalid 3
+              disabled={!isDPMode || item.remote == 1}
+              onClick={() => isDPMode && handleInvalid(3)} // Set to invalid 3
             >
               Invalid 3
             </Button>
@@ -278,40 +213,40 @@ function CircuitBreaker({
 
         <div className="flex flex-col justify-center gap-3">
           <div className="text-sm flex flex-col">
-            <p className="font-bold">{name}</p>
-            {isDP ? (
+            <p className="font-bold">{item.name}</p>
+            {isDPMode ? (
               <>
-                <p>IOA CB Status DP: {ioa_cb_status_dp}</p>
-                <p>IOA Control DP: {ioa_control_dp}</p>
+                <p>IOA CB Status DP: {item.ioa_cb_status_dp}</p>
+                <p>IOA Control DP: {item.ioa_control_dp}</p>
               </>
             ) : (
               <>
-                <p>IOA CB Status Open: {ioa_cb_status}</p>
-                <p>IOA CB Status Close: {ioa_cb_status_close}</p>
-                <p>IOA Control Open: {ioa_control_open} </p>
-                <p>IOA Control Close: {ioa_control_close} </p>
+                <p>IOA CB Status Open: {item.ioa_cb_status}</p>
+                <p>IOA CB Status Close: {item.ioa_cb_status_close}</p>
+                <p>IOA Control Open: {item.ioa_control_open} </p>
+                <p>IOA Control Close: {item.ioa_control_close} </p>
               </>
             )}
-            <p>IOA Local/Remote: {ioa_local_remote}</p>
+            <p>IOA Local/Remote: {item.ioa_local_remote}</p>
             <p>SBO: {isSBO ? "True" : "False"}</p>
-            <p>Type: {isDP ? "Double" : "Single"} Point Command</p>
+            <p>Type: {isDPMode ? "Double" : "Single"} Point Command</p>
           </div>
 
           {/* Toggle buttons */}
           <div className="flex flex-row gap-4 text-white">
             <Button
               size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${!isLocal ? 'opacity-50' : ''}`}
-              onClick={() => isLocal && toggleSBO(!isSBO)}
-              disabled={!isLocal}
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${item.remote == 1 ? 'opacity-50' : ''}`}
+              onClick={() => !isRemote && toggleSBO()}
+              disabled={isRemote}
             >
               SBO
             </Button>
             <Button
               size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDP ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${!isLocal ? 'opacity-50' : ''}`}
-              onClick={() => isLocal && toggleDP()}
-              disabled={!isLocal && !is_double_point}
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+              onClick={() => !isRemote && toggleDP()}
+              disabled={isRemote && !isDPMode}
             >
               Double Point
             </Button>
@@ -319,13 +254,13 @@ function CircuitBreaker({
 
           {/* Local/Remote switch */}
           <div className="flex flex-row gap-4 items-center">
-            <span className={`font-bold ${isLocal ? 'text-red-500' : ''}`}>Local</span>
+            <span className={`font-bold ${!isRemote ? 'text-red-500' : ''}`}>Local</span>
             <Switch
-              id={`location-mode-${ioa_cb_status}`}
-              checked={!isLocal}
-              onCheckedChange={(checked) => toggleLocalRemote(checked)}
+              id={`location-mode-${item.ioa_cb_status}`}
+              checked={isRemote}
+              onCheckedChange={() => toggleLocalRemote()}
             />
-            <span className={`font-bold ${!isLocal ? 'text-red-500' : ''}`}>Remote</span>
+            <span className={`font-bold ${isRemote ? 'text-red-500' : ''}`}>Remote</span>
           </div>
         </div>
       </div>

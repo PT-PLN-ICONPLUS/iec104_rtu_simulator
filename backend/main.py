@@ -131,14 +131,8 @@ async def get_initial_data(sid):
     try:
         data = {
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
-            "telesignals": [
-                {**item.model_dump(), "auto_mode": getattr(item, "auto_mode", True)}
-                for item in telesignals.values()
-            ],
-            "telemetries": [
-                {**item.model_dump(), "auto_mode": getattr(item, "auto_mode", True)}
-                for item in telemetries.values()
-            ],
+            "telesignals": [item.model_dump() for item in telesignals.values()],
+            "telemetries": [item.model_dump() for item in telemetries.values()],
         }
         await sio.emit('get_initial_data_response', data, room=sid)
         logger.info(f"Initial data sent to {sid}. Data: {data}")
@@ -180,10 +174,10 @@ async def add_circuit_breaker(sid, data):
     
 @sio.event
 async def update_circuit_breaker(sid, data):
-    ioa_cb_status = data.get('ioa_cb_status')
+    id = data.get('id')
     # Find the item by IOA
     for item_id, item in list(circuit_breakers.items()):
-        if item.ioa_cb_status == ioa_cb_status:
+        if id == item_id:
             # Update remote status if provided
             if 'remote' in data:
                 circuit_breakers[item_id].remote = data['remote']
@@ -223,7 +217,7 @@ async def update_circuit_breaker(sid, data):
                 circuit_breakers[item_id].is_double_point = data['is_double_point']
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
-            # await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Circuit breaker not found"}

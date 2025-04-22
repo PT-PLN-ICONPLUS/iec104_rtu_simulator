@@ -1,6 +1,7 @@
 export interface CircuitBreakerItem {
   id: string;
   name: string;
+
   ioa_cb_status: number;
   ioa_cb_status_close: number; 
   ioa_control_open: number;
@@ -10,11 +11,16 @@ export interface CircuitBreakerItem {
   ioa_local_remote: number;
   is_sbo: boolean;
   is_double_point: boolean;
+
   remote: number;
-  value: number;
-  min_value: number;
-  max_value: number;
-  interval: number;
+  cb_status_open: number
+  cb_status_close: number
+  cb_status_dp: number
+  control_open: number
+  control_close: number
+  control_dp: number
+
+  
 }
 
 export interface TeleSignalItem {
