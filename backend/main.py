@@ -251,7 +251,7 @@ async def add_telesignal(sid, data):
     result = IEC_SERVER.add_ioa(item.ioa, SinglePointInformation, item.value, None, True)
     if result == 0:
         # Initialize with auto_mode disabled
-        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = data.get('auto_mode', False)
         await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
         return {"status": "success", "message": f"Added telesignal {item.name}"}
     else:
@@ -276,7 +276,7 @@ async def update_telesignal(sid, data):
                 result = IEC_SERVER.update_ioa(ioa, new_value)
                 logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            # await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+            await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Telesignal not found"}
@@ -455,27 +455,6 @@ async def poll_ioa_values():
                 "telemetries": False
             }
             
-            # Simulate circuit breakers in auto mode
-            # for item_id, item in list(circuit_breakers.items()):
-            #     # Skip if not due for update yet
-            #     last_update = last_update_times["circuit_breakers"].get(item_id, 0)
-            #     if current_time - last_update < item.interval:
-            #         continue
-                    
-            #     if not item.remote:  # Only change values if not in remote mode
-            #         continue
-                    
-            #     new_value = random.randint(item.min_value, item.max_value)
-            #     if new_value != item.value:
-            #         circuit_breakers[item_id].value = new_value
-            #         IEC_SERVER.update_ioa(item.ioa_data, new_value)
-            #         if item.is_double_point and item.ioa_data_dp:
-            #             IEC_SERVER.update_ioa(item.ioa_data_dp, new_value)
-                        
-            #         # Record update time
-            #         last_update_times["circuit_breakers"][item_id] = current_time
-            #         has_updates["circuit_breakers"] = True
-            
             # Simulate telesignals in auto mode
             for item_id, item in list(telesignals.items()):
                 # Skip if not due for update yet
@@ -487,10 +466,12 @@ async def poll_ioa_values():
                 if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
                     continue
                     
-                new_value = random.randint(item.min_value, item.max_value)
+                new_value = random.randint(0, 1)  # Simulate a random value for the telesignal
                 if new_value != item.value:
                     telesignals[item_id].value = new_value
                     IEC_SERVER.update_ioa(item.ioa, new_value)
+                    
+                    logger.info(f"Telesignal auto-updated: {item.name} (IOA: {item.ioa}) value: {telesignals[item_id].value}")
                     
                     # Record update time
                     last_update_times["telesignals"][item_id] = current_time

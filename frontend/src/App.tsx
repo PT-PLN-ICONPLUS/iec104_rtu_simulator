@@ -285,11 +285,14 @@ function App() {
           />
           {teleSignals.map(item => (
             <TeleSignal
-              key={item.id}
+              id={item.id}
               name={item.name}
               ioa={item.ioa}
               value={item.value}
-              auto_mode={item.auto_mode} />
+              auto_mode={item.auto_mode}
+              min_value={item.min_value}
+              max_value={item.max_value}
+              interval={item.interval} />
           ))}
         </div>
 

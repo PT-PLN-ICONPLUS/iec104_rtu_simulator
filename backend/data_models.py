@@ -28,9 +28,7 @@ class TeleSignalItem(BaseModel):
     name: str
     ioa: int
     value: int = 0
-    min_value: int = 0
-    max_value: int = 1
-    interval: int = 10
+    interval: int = 2
     auto_mode: bool = True
 
 class TelemetryItem(BaseModel):

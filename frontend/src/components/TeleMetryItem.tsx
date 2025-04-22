@@ -3,27 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import socket from '../socket';
 
-interface TelemetryProps {
-  name: string;
-  ioa: number; // ioa
-  unit: string;
-  value: number;
-  min_value: number;
-  max_value: number;
-  scale_factor: number;
-  auto_mode: boolean; // true is auto, false is manual
-}
-
-function Telemetry({
-  name = "Frequency",
-  ioa = 117,
-  unit = "Hz",
-  value: initialValue = 50.0,
-  min_value = 0.0,
-  max_value = 100.0,
-  scale_factor = 1.0,
-  auto_mode = false
-}: TelemetryProps) {
+function Telemetry(item: TelemetryProps) {
   const [isAuto, setAuto] = useState(auto_mode);
   const [value, setValue] = useState(initialValue); // Value as float
 
