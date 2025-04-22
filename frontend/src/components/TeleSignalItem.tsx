@@ -6,12 +6,13 @@ import socket from '../socket';
 interface TeleSignalProps {
   name: string;
   ioa: number; // ioa
+  auto_mode: boolean; // true is auto, false is manual
   value: number; // 0 is off, 1 is on
 }
 
-function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
+function TeleSignal({ name = "Test", ioa = 117, value = 0, auto_mode = false }: TeleSignalProps) {
   const [isOn, setIsOn] = useState(value === 1); // value: 0 is off, 1 is on
-  const [isAuto, setAuto] = useState(false);
+  const [isAuto, setAuto] = useState(auto_mode);
 
   useEffect(() => {
     setIsOn(value === 1);

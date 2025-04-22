@@ -131,11 +131,17 @@ async def get_initial_data(sid):
     try:
         data = {
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
-            "telesignals": [item.model_dump() for item in telesignals.values()],
-            "telemetries": [item.model_dump() for item in telemetries.values()],
+            "telesignals": [
+                {**item.model_dump(), "auto_mode": getattr(item, "auto_mode", True)}
+                for item in telesignals.values()
+            ],
+            "telemetries": [
+                {**item.model_dump(), "auto_mode": getattr(item, "auto_mode", True)}
+                for item in telemetries.values()
+            ],
         }
         await sio.emit('get_initial_data_response', data, room=sid)
-        logger.info(f"Initial data sent to {sid}")
+        logger.info(f"Initial data sent to {sid}. Data: {data}")
     except Exception as e:
         logger.error(f"Error fetching initial data: {e}")
         await sio.emit('get_initial_data_error', {"error": "Failed to fetch initial data"}, room=sid)
@@ -253,6 +259,7 @@ async def add_telesignal(sid, data):
         # Initialize with auto_mode disabled
         IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
         await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+        return {"status": "success", "message": f"Added telesignal {item.name}"}
     else:
         await sio.emit('error', {'message': f'Failed to add telesignal IOA {item.ioa}'})
 

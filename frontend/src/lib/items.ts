@@ -25,6 +25,7 @@ export interface TeleSignalItem {
   min_value: number;
   max_value: number;
   interval: number;
+  auto_mode: boolean; // true is auto, false is manual
 }
 
 export interface TelemetryItem {
@@ -37,6 +38,7 @@ export interface TelemetryItem {
   max_value: number;
   scale_factor: number;
   interval: number;
+  auto_mode: boolean; // true is auto, false is manual
 }
 
 export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem;

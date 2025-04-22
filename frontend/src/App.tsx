@@ -19,9 +19,21 @@ function App() {
     // Listen for the response
     socket.on('get_initial_data_response', (response: any) => {
       console.log('Initial data received:', response);
+
+      // Update state with initial data
       setCircuitBreakers(response.circuit_breakers || []);
-      setTeleSignals(response.telesignals || []);
-      setTeleMetries(response.telemetries || []);
+      setTeleSignals(
+        response.telesignals.map((item: any) => ({
+          ...item,
+          auto_mode: item.auto_mode, // Default to true if not provided
+        }))
+      );
+      setTeleMetries(
+        response.telemetries.map((item: any) => ({
+          ...item,
+          auto_mode: item.auto_mode, // Default to true if not provided
+        }))
+      );
     });
 
     // Handle errors
@@ -300,7 +312,8 @@ function App() {
               key={item.id}
               name={item.name}
               ioa={item.ioa}
-              value={item.value} />
+              value={item.value}
+              auto_mode={item.auto_mode} />
           ))}
         </div>
 
@@ -322,6 +335,7 @@ function App() {
               min_value={item.min_value}
               max_value={item.max_value}
               scale_factor={item.scale_factor || 1.0}
+              auto_mode={item.auto_mode}
             />
           ))}
         </div>
