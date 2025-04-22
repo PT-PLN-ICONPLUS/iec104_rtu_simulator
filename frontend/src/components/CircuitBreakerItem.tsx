@@ -119,7 +119,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
   const toggleLocalRemote = () => {
     socket.emit('update_circuit_breaker', {
       id: item.id,
-      remote: isRemote ? 1 : 0
+      remote: isRemote ? 0 : 1
     });
 
     setIsRemote(!isRemote);
@@ -256,9 +256,9 @@ function CircuitBreaker(item: CircuitBreakerItem) {
           <div className="flex flex-row gap-4 items-center">
             <span className={`font-bold ${!isRemote ? 'text-red-500' : ''}`}>Local</span>
             <Switch
-              id={`location-mode-${item.ioa_cb_status}`}
+              id={`location-mode-${item.id}`}
               checked={isRemote}
-              onCheckedChange={() => toggleLocalRemote()}
+              onCheckedChange={toggleLocalRemote}
             />
             <span className={`font-bold ${isRemote ? 'text-red-500' : ''}`}>Remote</span>
           </div>
