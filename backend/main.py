@@ -1,4 +1,5 @@
 import asyncio
+import math
 import time
 from typing import Dict
 from fastapi import FastAPI
@@ -321,29 +322,21 @@ async def add_telemetry(sid, data):
 @sio.event
 async def update_telemetry(sid, data):
     ioa = int(data['ioa'])
-    
-    # Find the item by IOA
     for item_id, item in list(telemetries.items()):
         if item.ioa == ioa:
             # Update auto_mode if provided
             if 'auto_mode' in data:
                 telemetries[item_id].auto_mode = data['auto_mode']
                 logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
-            
             # Update value if provided
             if 'value' in data:
-                new_value = data['value']
+                new_value = float(data['value'])
                 telemetries[item_id].value = new_value
-                
-                result = IEC_SERVER.update_ioa(ioa, new_value)
-                if result != 0:
-                    await sio.emit('error', {'message': f'Failed to update telemetry IOA {ioa}'})
-                
-                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
-            
-            # await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+                scaled_value = int(round(new_value / item.scale_factor))
+                IEC_SERVER.update_ioa(ioa, scaled_value)
+                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
+            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
             return {"status": "success"}
-    
     return {"status": "error", "message": "Telemetry not found"}
 
 @sio.event
@@ -488,9 +481,21 @@ async def poll_ioa_values():
                 if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
                     continue
                     
-                new_value = random.uniform(item.min_value, item.max_value)
-                telemetries[item_id].value = round(new_value, 2)
-                scaled_value = int(new_value / item.scale_factor)
+                # Generate a random value within range that's a multiple of the scale factor
+                scale_factor = item.scale_factor
+                # Determine how many possible steps exist within the range
+                possible_steps = int(round((item.max_value - item.min_value) / scale_factor)) + 1
+                # Choose a random step
+                random_step = random.randint(0, possible_steps - 1)
+                new_value = item.min_value + (random_step * scale_factor)
+                # Determine precision based on scale factor
+                precision = 0 if scale_factor >= 1 else -int(math.floor(math.log10(scale_factor)))
+                # Round to appropriate precision to avoid floating point errors
+                new_value = round(new_value, precision)
+                
+                # Update the telemetry object with the new value
+                telemetries[item_id].value = new_value
+                scaled_value = int(round(new_value / scale_factor))
                 IEC_SERVER.update_ioa(item.ioa, scaled_value)
                 
                 logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")

@@ -2,77 +2,93 @@
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import socket from '../socket';
+import { TelemetryItem } from '@/lib/items';
 
-function Telemetry(item: TelemetryProps) {
-  const [isAuto, setAuto] = useState(auto_mode);
-  const [value, setValue] = useState(initialValue); // Value as float
+function Telemetry(item: TelemetryItem) {
+  const [value, setValue] = useState(item.value); // Value as float
+  const [isAuto, setAuto] = useState(item.auto_mode);
 
-  const step = scale_factor || 1.0;
-
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+  const step = item.scale_factor || 1.0;
 
   useEffect(() => {
-    socket.emit('update_telemetry', {
-      ioa,
-      auto_mode: isAuto
-    });
-  }, [isAuto, ioa]);
+    const handleUpdate = (data: TelemetryItem[]) => {
+      // Filter the data to find the specific item based on ioa
+      const filtered = data.filter((look: TelemetryItem) => look.ioa === item.ioa);
+
+      if (filtered[0].ioa === item.ioa) {
+        setValue(filtered[0].value);
+        setAuto(filtered[0].auto_mode);
+      }
+    }
+
+    socket.on('telemetries', handleUpdate);
+    return () => {
+      socket.off('telemetries', handleUpdate);
+    }
+  }, [item.ioa]);
 
   const increaseValue = () => {
     setValue(prev => {
-      const newValue = Math.min(prev + step, max_value);
-      // Round to avoid floating point precision issues
+      let newValue = prev + step;
+
+      // Ensure the value is a precise multiple of the step
       const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
-      const roundedValue = Number(newValue.toFixed(precision));
+      newValue = Number((Math.round(newValue / step) * step).toFixed(precision));
+
+      // Ensure we don't exceed max value
+      newValue = Math.min(newValue, item.max_value);
 
       // Send value update to backend
       socket.emit('update_telemetry', {
-        ioa,
-        value: roundedValue
+        ioa: item.ioa,
+        value: newValue
       });
 
-      return roundedValue;
+      return newValue;
     });
   };
 
   const decreaseValue = () => {
     setValue(prev => {
-      const newValue = Math.max(prev - step, min_value);
-      // Round to avoid floating point precision issues
+      // Calculate next value as a multiple of step
+      let newValue = prev - step;
+
+      // Ensure the value is a precise multiple of the step
       const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
-      const roundedValue = Number(newValue.toFixed(precision));
+      newValue = Number((Math.round(newValue / step) * step).toFixed(precision));
+
+      // Ensure we don't go below min value
+      newValue = Math.max(newValue, item.min_value);
 
       // Send value update to backend
       socket.emit('update_telemetry', {
-        ioa,
-        value: roundedValue
+        ioa: item.ioa,
+        value: newValue
       });
 
-      return roundedValue;
+      return newValue;
     });
   };
 
-  const toggleAuto = () => {
+  const toggleAutoMode = () => {
     const newAutoMode = !isAuto;
     setAuto(newAutoMode);
 
     // Send updated auto_mode to backend
     socket.emit('update_telemetry', {
-      ioa,
+      ioa: item.ioa,
       auto_mode: newAutoMode
     });
   };
 
   return (
     <div className="p-3 flex items-center text-center border-b-2">
-      <p className="font-bold w-1/3">{name}</p>
+      <p className="font-bold w-1/3">{item.name}</p>
       <div className="flex flex-col w-1/3">
         <p className="text-2xl font-bold">
-          {value} {unit}
+          {value} {item.unit}
         </p>
-        <p className="text-sm">IOA: {ioa}</p>
+        <p className="text-sm">IOA: {item.ioa}</p>
       </div>
       <div className="flex flex-col w-1/3 gap-0.5 items-center">
         <Button
@@ -84,7 +100,7 @@ function Telemetry(item: TelemetryProps) {
         </Button>
         <Button
           className={`${isAuto ? 'bg-green-500 hover:bg-green-300 text-white' : 'bg-white hover:bg-gray-300 text-green-500'} rounded w-9 h-9 border-2 border-black`}
-          onClick={toggleAuto}
+          onClick={toggleAutoMode}
         >
           A
         </Button>
