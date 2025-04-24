@@ -8,8 +8,6 @@ function Telemetry(item: TelemetryItem) {
   const [value, setValue] = useState(item.value); // Value as float
   const [isAuto, setAuto] = useState(item.auto_mode);
 
-  const step = item.scale_factor || 1.0;
-
   useEffect(() => {
     const handleUpdate = (data: TelemetryItem[]) => {
       // Filter the data to find the specific item based on ioa
@@ -29,11 +27,11 @@ function Telemetry(item: TelemetryItem) {
 
   const increaseValue = () => {
     setValue(prev => {
-      let newValue = prev + step;
+      let newValue = prev + item.scale_factor;
 
-      // Ensure the value is a precise multiple of the step
-      const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
-      newValue = Number((Math.round(newValue / step) * step).toFixed(precision));
+      // Ensure the value is a precise multiple of the item.scale_factor
+      const precision = item.scale_factor >= 1 ? 0 : -Math.floor(Math.log10(item.scale_factor));
+      newValue = Number((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
 
       // Ensure we don't exceed max value
       newValue = Math.min(newValue, item.max_value);
@@ -51,11 +49,11 @@ function Telemetry(item: TelemetryItem) {
   const decreaseValue = () => {
     setValue(prev => {
       // Calculate next value as a multiple of step
-      let newValue = prev - step;
+      let newValue = prev - item.scale_factor;
 
-      // Ensure the value is a precise multiple of the step
-      const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
-      newValue = Number((Math.round(newValue / step) * step).toFixed(precision));
+      // Ensure the value is a precise multiple of the item.scale_factor
+      const precision = item.scale_factor >= 1 ? 0 : -Math.floor(Math.log10(item.scale_factor));
+      newValue = Number((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
 
       // Ensure we don't go below min value
       newValue = Math.max(newValue, item.min_value);

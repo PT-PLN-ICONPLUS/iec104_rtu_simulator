@@ -351,11 +351,13 @@ class IEC60870_5_104_server:
             if hasattr(self, 'socketio') and self.socketio:
                 if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
                     self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
+                    logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
                 elif self.telesignals and ioa in [ts.ioa for ts in self.telesignals.values()]:
                     self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
+                    logger.info(f"Updated telesignal {ioa} to {self.telesignals[ioa].data}, triggered in update_ioa function")
                 elif self.telemetries and ioa in [tm.ioa for tm in self.telemetries.values()]:
                     self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
-
+                    logger.info(f"Updated telemetry {ioa} to {self.telemetries[ioa].data}, triggered in update_ioa function")
         return 0
     
     def remove_ioa(self, ioa):
@@ -364,9 +366,3 @@ class IEC60870_5_104_server:
             return 0
         else:
             return -1
-    
-    # TODO still figure it out    
-    def update_data(self):
-        for ioa in self.ioa_list:
-            if self.ioa_list[ioa]['callback'] != None:
-                self.ioa_list[ioa]['callback'](ioa,self.ioa_list[ioa], self)

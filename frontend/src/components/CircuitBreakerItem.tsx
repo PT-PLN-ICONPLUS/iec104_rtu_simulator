@@ -1,5 +1,5 @@
 // frontend/src/components/CircuitBreakerItem.tsx (Updated)
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import socket from "../socket";
@@ -15,17 +15,43 @@ function CircuitBreaker(item: CircuitBreakerItem) {
   const [cbStatusClose, setCbStatusClose] = useState(item.cb_status_close);
   const [cbStatusDP, setCbStatusDP] = useState(item.cb_status_dp);
 
+  const openValueDoublePoint = 1;
+  const closeValueDoublePoint = 2;
+  const invalidValueDoublePoint0 = 0;
+  const invalidValueDoublePoint3 = 3;
+
+  useEffect(() => {
+    const handleUpdate = (data: CircuitBreakerItem[]) => {
+      // Filter the data to find the specific item based on id
+      const filtered = data.filter((look: CircuitBreakerItem) => look.id === item.id);
+      if (filtered[0].id === item.id) {
+        setCbStatusOpen(filtered[0].cb_status_open);
+        setCbStatusClose(filtered[0].cb_status_close);
+        setCbStatusDP(filtered[0].cb_status_dp);
+        setIsRemote(filtered[0].remote === 1);
+        setIsSBO(filtered[0].is_sbo);
+        setIsDPMode(filtered[0].is_double_point);
+      }
+    }
+    socket.on('circuit_breakers', handleUpdate);
+    return () => {
+      socket.off('circuit_breakers', handleUpdate);
+    }
+  }, [item.id]);
 
   const handleOpen = () => {
     if (isDPMode) {
+      setCbStatusDP(openValueDoublePoint);
+
       // Handle open logic for double point
       socket.emit('update_circuit_breaker', {
         id: item.id,
-        cb_status_dp: 1,
-        control_dp: 1
+        cb_status_dp: openValueDoublePoint,
+        control_dp: openValueDoublePoint
       });
-      setCbStatusDP(1);
     } else {
+      setCbStatusOpen(1);
+      setCbStatusClose(0);
       // Handle open logic for single point
       socket.emit('update_circuit_breaker', {
         id: item.id,
@@ -34,24 +60,22 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_open: 1,
         control_close: 0
       });
-
-      // for updating UI
-      setCbStatusOpen(1);
-      setCbStatusClose(0);
     }
-
   }
 
   const handleClose = () => {
     if (isDPMode) {
+      setCbStatusDP(closeValueDoublePoint);
       // Handle close logic for double point
       socket.emit('update_circuit_breaker', {
         id: item.id,
-        cb_status_dp: 2,
-        control_dp: 2
+        cb_status_dp: closeValueDoublePoint,
+        control_dp: closeValueDoublePoint
       });
-      setCbStatusDP(2);
     } else {
+      setCbStatusOpen(0);
+      setCbStatusClose(1);
+
       // Handle close logic for single point
       socket.emit('update_circuit_breaker', {
         id: item.id,
@@ -60,77 +84,88 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_open: 0,
         control_close: 1
       });
-
-      // for updating UI
-      setCbStatusOpen(0);
-      setCbStatusClose(1);
     }
   }
 
   const handleTrip = () => {
     if (isDPMode) {
+      const newStatus = item.cb_status_dp === 1 ? 2 : 1;
+
+      setCbStatusDP(newStatus);
+
       // Handle trip logic for double point
       socket.emit('update_circuit_breaker', {
         id: item.id,
-        cb_status_dp: item.cb_status_dp === 1 ? 2 : 1,
-        control_dp: item.cb_status_dp === 1 ? 2 : 1
+        cb_status_dp: newStatus,
+        control_dp: newStatus
       });
-      setCbStatusDP(item.cb_status_dp === 1 ? 2 : 1);
     } else {
+      const newStatusOpen = item.cb_status_open === 1 ? 0 : 1;
+      const newStatusClose = item.cb_status_close === 1 ? 0 : 1;
+
+      setCbStatusOpen(newStatusOpen);
+      setCbStatusClose(newStatusClose);
+
       // Handle trip logic for single point
       socket.emit('update_circuit_breaker', {
         id: item.id,
-        cb_status_open: item.cb_status_open === 1 ? 0 : 1,
-        cb_status_close: item.cb_status_close === 1 ? 0 : 1,
-        control_open: item.cb_status_open === 1 ? 0 : 1,
-        control_close: item.cb_status_close === 1 ? 0 : 1
+        cb_status_open: newStatusOpen,
+        cb_status_close: newStatusClose,
+        control_open: newStatusOpen,
+        control_close: newStatusClose,
       });
-
-      // for updating UI
-      setCbStatusOpen(item.cb_status_open === 1 ? 0 : 1);
-      setCbStatusClose(item.cb_status_close === 1 ? 0 : 1);
     }
   }
 
   const handleInvalid = (type = 0) => {
     if (isDPMode) {
       // Handle invalid logic for double point
-      if (type === 0) {
+      if (type === invalidValueDoublePoint0) {
+        setCbStatusDP(invalidValueDoublePoint0);
         // Set to invalid 0
         socket.emit('update_circuit_breaker', {
           id: item.id,
-          cb_status_dp: 0,
-          control_dp: 0
+          cb_status_dp: invalidValueDoublePoint0,
+          control_dp: invalidValueDoublePoint0
         });
-        setCbStatusDP(0);
       }
-      else if (type === 3) {
+      else if (type === invalidValueDoublePoint3) {
+        setCbStatusDP(invalidValueDoublePoint3);
         // Set to invalid 3
         socket.emit('update_circuit_breaker', {
           id: item.id,
-          cb_status_dp: 3,
-          control_dp: 3
+          cb_status_dp: invalidValueDoublePoint3,
+          control_dp: invalidValueDoublePoint3
         });
-        setCbStatusDP(3);
       }
     }
   }
 
   const toggleLocalRemote = () => {
+    setIsRemote(!isRemote);
+
     socket.emit('update_circuit_breaker', {
       id: item.id,
       remote: isRemote ? 0 : 1
     });
-
-    setIsRemote(!isRemote);
   };
 
   const toggleSBO = () => {
     setIsSBO(!isSBO);
+
+    socket.emit('update_circuit_breaker', {
+      id: item.id,
+      is_sbo: !isSBO
+    });
   };
 
   const toggleDP = () => {
     setIsDPMode(!isDPMode);
+
+    socket.emit('update_circuit_breaker', {
+      id: item.id,
+      is_double_point: !isDPMode
+    });
   };
 
   return (

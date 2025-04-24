@@ -548,6 +548,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 socket_app = socketio.ASGIApp(sio, app)
 
+# API endpoint home
+@app.get("/")
+async def root():
+    return {
+        "message": "Modbus TCP Server Simulator API", 
+        "status": "running",
+        "items": {
+            "circuit_breakers": len(circuit_breakers),
+            "telesignals": len(telesignals),
+            "telemetries": len(telemetries)
+        }
+    }
+
 # Run the FastAPI app with Uvicorn
 if __name__ == "__main__":
     uvicorn.run(socket_app, host=FASTAPI_HOST, port=FASTAPI_PORT)

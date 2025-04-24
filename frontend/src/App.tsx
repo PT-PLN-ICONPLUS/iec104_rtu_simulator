@@ -17,7 +17,11 @@ function App() {
     socket.emit('get_initial_data');
 
     // Listen for the response
-    socket.on('get_initial_data_response', (response: any) => {
+    socket.on('get_initial_data_response', (response: {
+      circuit_breakers: CircuitBreakerItem[];
+      telesignals: TeleSignalItem[];
+      telemetries: TelemetryItem[];
+    }) => {
       console.log('Initial data received:', response);
 
       // Update state with initial data
@@ -27,7 +31,7 @@ function App() {
     });
 
     // Handle errors
-    socket.on('get_initial_data_error', (error: any) => {
+    socket.on('get_initial_data_error', (error: unknown) => {
       console.error('Error fetching initial data:', error);
       alert('Failed to fetch initial data. Please check the console for details.');
     });
@@ -88,7 +92,7 @@ function App() {
 
     // Send to backend
     if (socket) {
-      socket.emit('add_circuit_breaker', newItem, (response: any) => {
+      socket.emit('add_circuit_breaker', newItem, (response: unknown) => {
         console.log('Add circuit breaker response:', response);
       });
     }
@@ -97,7 +101,7 @@ function App() {
   const removeCircuitBreaker = (data: { id: string }) => {
     // Send to backend instead of just updating local state
     if (socket) {
-      socket.emit('remove_circuit_breaker', data, (response: any) => {
+      socket.emit('remove_circuit_breaker', data, (response: unknown) => {
         console.log('Remove circuit breaker response:', response);
       });
     }
@@ -116,7 +120,7 @@ function App() {
     };
 
     if (socket) {
-      socket.emit('add_telesignal', newItem, (response: any) => {
+      socket.emit('add_telesignal', newItem, (response: unknown) => {
         console.log('Add tele signal response:', response);
       });
     }
@@ -124,7 +128,7 @@ function App() {
 
   const removeTeleSignal = (data: { id: string }) => {
     if (socket) {
-      socket.emit('remove_telesignal', data, (response: any) => {
+      socket.emit('remove_telesignal', data, (response: unknown) => {
         console.log('Remove tele signal response:', response);
       });
     }
@@ -145,7 +149,7 @@ function App() {
     };
 
     if (socket) {
-      socket.emit('add_telemetry', newItem, (response: any) => {
+      socket.emit('add_telemetry', newItem, (response: unknown) => {
         console.log('Add telemetry response:', response);
       });
     }
@@ -153,7 +157,7 @@ function App() {
 
   const removeTelemetry = (data: { id: string }) => {
     if (socket) {
-      socket.emit('remove_telemetry', data, (response: any) => {
+      socket.emit('remove_telemetry', data, (response: unknown) => {
         console.log('Remove telemetry response:', response);
       });
     }
@@ -245,12 +249,13 @@ function App() {
           {/* Header Circuit Breaker Section */}
           <SectionTitle
             title="Circuit Breakers"
-            onAdd={addCircuitBreaker}
+            onAdd={data => addCircuitBreaker(data as CircuitBreakerItem)}
             onRemove={removeCircuitBreaker}
             items={circuitBreakers}
           />
           {circuitBreakers.map(item => (
             <CircuitBreaker
+              key={item.id}
               id={item.id}
               name={item.name}
               ioa_cb_status={item.ioa_cb_status}
@@ -279,12 +284,13 @@ function App() {
         <div className="w-1/3 border-2">
           <SectionTitle
             title="Telesignals"
-            onAdd={addTeleSignal}
+            onAdd={data => addTeleSignal(data as TeleSignalItem)}
             onRemove={removeTeleSignal}
             items={teleSignals}
           />
           {teleSignals.map(item => (
             <TeleSignal
+              key={item.id}
               id={item.id}
               name={item.name}
               ioa={item.ioa}
@@ -300,13 +306,14 @@ function App() {
         <div className="w-1/3 border-2">
           <SectionTitle
             title="Telemetry"
-            onAdd={addTelemetry}
+            onAdd={data => addTelemetry(data as TelemetryItem)}
             onRemove={removeTelemetry}
             items={teleMetries}
           />
           {teleMetries.map(item => (
             <Telemetry
               key={item.id}
+              id={item.id}
               name={item.name}
               ioa={item.ioa}
               unit={item.unit}
@@ -315,6 +322,7 @@ function App() {
               max_value={item.max_value}
               scale_factor={item.scale_factor || 1.0}
               auto_mode={item.auto_mode}
+              interval={item.interval}
             />
           ))}
         </div>
