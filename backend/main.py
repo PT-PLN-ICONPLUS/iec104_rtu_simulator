@@ -13,8 +13,6 @@ from lib.libiec60870server import IEC60870_5_104_server
 import logging
 import random
 from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
-from fastapi.responses import JSONResponse
-from fastapi import HTTPException
 from lib.lib60870 import (
     SinglePointInformation,
     MeasuredValueScaled,
