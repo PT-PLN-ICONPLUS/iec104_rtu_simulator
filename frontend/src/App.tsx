@@ -214,7 +214,7 @@ function App() {
   };
 
   return (
-    <div className="min-w-screen">
+    <div className="min-w-screen fixed">
       <div className="flex justify-between items-center py-3 px-4 border-b">
         <div className="flex items-center space-x-2">
           <img src="/iec.ico" alt="IEC Icon" className="w-6 h-6" />
@@ -243,9 +243,9 @@ function App() {
         </div>
       </div>
 
-      <div className="flex flex-row w-full min-h-screen">
+      <div className="flex flex-row w-full">
         {/* Circuit Breaker Section */}
-        <div className="w-1/3 border-2">
+        <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           {/* Header Circuit Breaker Section */}
           <SectionTitle
             title="Circuit Breakers"
@@ -253,7 +253,8 @@ function App() {
             onRemove={removeCircuitBreaker}
             items={circuitBreakers}
           />
-          {circuitBreakers.map(item => (
+          <div className="flex-1 overflow-y-auto">
+            {circuitBreakers.map(item => (
             <CircuitBreaker
               key={item.id}
               id={item.id}
@@ -278,17 +279,19 @@ function App() {
               control_dp={item.control_dp}
             />
           ))}
+          </div>
         </div>
 
         {/* Telesignal Section */}
-        <div className="w-1/3 border-2">
+        <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           <SectionTitle
             title="Telesignals"
             onAdd={data => addTeleSignal(data as TeleSignalItem)}
             onRemove={removeTeleSignal}
             items={teleSignals}
           />
-          {teleSignals.map(item => (
+          <div className="flex-1 overflow-y-auto">
+            {teleSignals.map(item => (
             <TeleSignal
               key={item.id}
               id={item.id}
@@ -300,17 +303,19 @@ function App() {
               max_value={item.max_value}
               interval={item.interval} />
           ))}
+          </div>
         </div>
 
         {/* Telemetry Section */}
-        <div className="w-1/3 border-2">
+        <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           <SectionTitle
             title="Telemetry"
             onAdd={data => addTelemetry(data as TelemetryItem)}
             onRemove={removeTelemetry}
             items={teleMetries}
           />
-          {teleMetries.map(item => (
+          <div className="flex-1 overflow-y-auto">
+            {teleMetries.map(item => (
             <Telemetry
               key={item.id}
               id={item.id}
@@ -325,6 +330,7 @@ function App() {
               interval={item.interval}
             />
           ))}
+          </div>
         </div>
       </div>
     </div>
