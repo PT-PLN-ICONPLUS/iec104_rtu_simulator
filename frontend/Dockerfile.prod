@@ -24,4 +24,4 @@ RUN npm run build
 EXPOSE ${REACT_PORT}
 
 # Command to run the application with --host option
-CMD ["npm", "run", "preview", "--", "--host", "--port", "${REACT_PORT}"]
+CMD npm run preview -- --host --port ${REACT_PORT}
