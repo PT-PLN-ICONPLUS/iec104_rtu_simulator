@@ -21,7 +21,7 @@ export default defineConfig({
     port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
   },
   preview: {
-    port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
+    port: process.env.REACT_NODEPORT ? parseInt(process.env.REACT_NODEPORT) : undefined,
     host: true,
   },
 })
