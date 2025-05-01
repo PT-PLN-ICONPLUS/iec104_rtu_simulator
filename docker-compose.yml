@@ -1,6 +1,8 @@
 services:
   simulator_iec104_backend:
-    build: ./backend/Dockerfile.local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
     container_name: iec104_backend_simulator
     hostname: iec104_backend_simulator
     ports:
@@ -17,7 +19,9 @@ services:
       - FASTAPI_PORT=6006
       - IEC_1004_SERVER_PORT=2404
   simulator_iec104_frontend:
-    build: ./frontend/Dockerfile.local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.local
     container_name: iec104_frontend_simulator
     hostname: iec104_frontend_simulator
     ports:

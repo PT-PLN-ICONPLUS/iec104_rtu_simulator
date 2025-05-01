@@ -23,5 +23,4 @@ RUN npm run build
 # Expose the port the app runs on
 EXPOSE ${REACT_NODEPORT}
 
-# Command to run the application with --host option
-CMD npm run preview -- --host --port ${REACT_NODEPORT}
+CMD ["npm", "run" ,"preview", "--", "--host", "--port", ${REACT_NODEPORT}]

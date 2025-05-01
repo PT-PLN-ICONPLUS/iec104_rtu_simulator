@@ -1,6 +1,7 @@
 FROM debian:stable-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y \
             git \
             build-essential \
@@ -30,8 +31,8 @@ RUN python3 -m venv venv && \
 ENV PATH="/srv/backend/venv/bin:$PATH"
 
 # Expose the necessary port
-EXPOSE 2404
 EXPOSE 6006
+EXPOSE 2404
 
 # Command to run the application
 CMD ["python3", "main.py"]
