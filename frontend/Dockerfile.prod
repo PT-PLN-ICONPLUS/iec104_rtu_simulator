@@ -20,7 +20,15 @@ COPY frontend/ /srv/frontend-${IMAGE_TAG}
 
 RUN npm run build
 
-# Expose the port the app runs on
+FROM node:22 AS runner
+ARG IMAGE_TAG
+ARG REACT_NODEPORT
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV REACT_NODEPORT=${REACT_NODEPORT}
+
+WORKDIR /srv/frontend-${IMAGE_TAG}
+COPY --from=builder /srv/frontend-${IMAGE_TAG} .
+
 EXPOSE ${REACT_NODEPORT}
 
-CMD ["npm", "run" ,"preview", "--", "--host", "--port", ${REACT_NODEPORT}]
+CMD ["npm", "run" ,"preview", "--", "--host", "--port", "${REACT_NODEPORT}"]
