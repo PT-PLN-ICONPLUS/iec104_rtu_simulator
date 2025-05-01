@@ -16,7 +16,7 @@ WORKDIR /srv/frontend-${IMAGE_TAG}
 RUN npm install
 
 # Copy the rest of the application code
-COPY . /srv/frontend-${IMAGE_TAG}
+COPY frontend/ /srv/frontend-${IMAGE_TAG}
 
 # Expose the port the app runs on
 EXPOSE ${REACT_PORT}
