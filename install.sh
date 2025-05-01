@@ -23,8 +23,8 @@ FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
 REGISTRY="10.14.73.59/scada"
 
 echo "Building Docker images..."
-docker build -t $BACKEND_IMAGE_TAG ./backend/
-docker build -t $FRONTEND_IMAGE_TAG ./frontend/
+docker build -t $BACKEND_IMAGE_TAG --build-arg IMAGE_TAG=$IMAGE_TAG FASTAPI_PORT=$FASTAPI_PORT IEC104_PORT=$IEC104_PORT ./backend/Dockerfile.prod
+docker build -t $FRONTEND_IMAGE_TAG --build-arg IMAGE_TAG=$IMAGE_TAG REACT_PORT=$REACT_PORT ./frontend/Dockerfile.prod
 
 echo "Tagging Docker images..."
 docker tag $BACKEND_IMAGE_TAG $REGISTRY/$BACKEND_IMAGE_TAG

@@ -1,8 +1,8 @@
 services:
-  simulator_iec104_backend_1:
-    build: ./backend
-    container_name: iec104_backend_simulator_1
-    hostname: iec104_backend_simulator_1
+  simulator_iec104_backend:
+    build: ./backend/Dockerfile.local
+    container_name: iec104_backend_simulator
+    hostname: iec104_backend_simulator
     ports:
       - "2404:2404"
       - "6006:6006"
@@ -16,10 +16,10 @@ services:
       - FASTAPI_HOST=0.0.0.0
       - FASTAPI_PORT=6006
       - IEC_1004_SERVER_PORT=2404
-  simulator_iec104_frontend_1:
-    build: ./frontend
-    container_name: iec104_frontend_simulator_1
-    hostname: iec104_frontend_simulator_1
+  simulator_iec104_frontend:
+    build: ./frontend/Dockerfile.local
+    container_name: iec104_frontend_simulator
+    hostname: iec104_frontend_simulator
     ports:
       - "4051:4051"
     # networks:
@@ -30,73 +30,3 @@ services:
       - PORT=4051
       - FASTAPI_HOST=localhost # Ip address of the backend server
       - FASTAPI_PORT=6006
-
-  # iec104_frontend_simulator_2:
-  #   build: ./client
-  #   container_name: iec104_frontend_simulator_2
-  #   hostname: iec104_frontend_simulator_2
-  #   ports:
-  #     - "5174:5174"
-  #   networks:
-  #     - app-tier
-  #   env_file:
-  #     - ./client/.env
-  #   environment:
-  #     - PORT=5174
-  #     - FLASK_HOST=10.14.152.231
-  #     - FLASK_PORT=6007
-
-  # iec104_backend_simulator_2:
-  #   build: ./server
-  #   container_name: iec104_backend_simulator_2
-  #   hostname: iec104_backend_simulator_2
-  #   ports:
-  #     - "2405:2405"
-  #     - "6007:6007"
-  #   networks:
-  #     - app-tier  
-  #   env_file:
-  #     - ./server/.env
-  #   environment:
-  #     - REACT_HOST=10.14.152.231
-  #     - REACT_PORT=5174
-  #     - FLASK_HOST=10.14.152.231
-  #     - FLASK_PORT=6007
-  #     - IEC_1004_SERVER_PORT=2405
-
-  # iec104_frontend_simulator_3:
-  #   build: ./client
-  #   container_name: iec104_frontend_simulator_3
-  #   hostname: iec104_frontend_simulator_3
-  #   ports:
-  #     - "5175:5175"
-  #   networks:
-  #     - app-tier
-  #   env_file:
-  #     - ./client/.env
-  #   environment:
-  #     - PORT=5175
-  #     - FLASK_HOST=10.14.152.231
-  #     - FLASK_PORT=6008
-
-  # iec104_backend_simulator_3:
-  #   build: ./server
-  #   container_name: iec104_backend_simulator_3
-  #   hostname: iec104_backend_simulator_3
-  #   ports:
-  #     - "2406:2406"
-  #     - "6008:6008"
-  #   networks:
-  #     - app-tier  
-  #   env_file:
-  #     - ./server/.env
-  #   environment:
-  #     - REACT_HOST=10.14.152.231
-  #     - REACT_PORT=5175
-  #     - FLASK_HOST=10.14.152.231
-  #     - FLASK_PORT=6008
-  #     - IEC_1004_SERVER_PORT=2406
-
-# networks:
-#     app-tier:
-#         external: true

@@ -1,0 +1,44 @@
+FROM debian:stable-slim
+
+ARG IMAGE_TAG
+ARG FASTAPI_PORT
+ARG IEC104_PORT
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV FASTAPI_PORT=${FASTAPI_PORT}
+ENV IEC104_PORT=${IEC104_PORT}
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+            git \
+            build-essential \
+            python3 \
+            python3-pip \
+            python3-venv \
+        && rm -rf /var/lib/apt/lists/*
+
+RUN git clone -b master https://github.com/mz-automation/lib60870.git /tmp/lib60870 && \
+    cd /tmp/lib60870 && \
+    git checkout 5741f28c122f83982ff3b8e20137b7db5c66eb70
+
+RUN cd /tmp/lib60870/lib60870-C && make dynlib && \
+    cp build/liblib60870.so /usr/local/lib/lib60870.so
+
+COPY . /srv/backend-${IMAGE_TAG}
+
+# Set the working directory
+WORKDIR /srv/backend-${IMAGE_TAG}
+
+# Create a virtual environment and activate it
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install -r requirements.txt
+
+# Set the entrypoint for the container to use the virtual environment
+ENV PATH="/srv/backend-${IMAGE_TAG}/venv/bin:$PATH"
+
+# Expose the necessary port
+EXPOSE ${FASTAPI_PORT}
+EXPOSE ${IEC104_PORT}
+
+# Command to run the application
+CMD ["python3", "main.py"]

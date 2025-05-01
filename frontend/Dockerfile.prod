@@ -1,20 +1,25 @@
 # Use the official Node.js image as the base image
 FROM node:22
 
+ARG IMAGE_TAG
+ARG REACT_PORT
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV REACT_PORT=${REACT_PORT}
+
 # Copy package.json and package-lock.json
-COPY package*.json /srv/frontend/
+COPY package*.json /srv/frontend-${IMAGE_TAG}/
 
 # Set the working directory
-WORKDIR /srv/frontend
+WORKDIR /srv/frontend-${IMAGE_TAG}
 
 # Install dependencies
 RUN npm install
 
 # Copy the rest of the application code
-COPY . /srv/frontend
+COPY . /srv/frontend-${IMAGE_TAG}
 
 # Expose the port the app runs on
-EXPOSE 4051
+EXPOSE ${REACT_PORT}
 
 # Command to run the application with --host option
 CMD ["npm", "run", "dev", "--", "--host"]
