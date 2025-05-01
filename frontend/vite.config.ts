@@ -20,4 +20,8 @@ export default defineConfig({
   server: {
     port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
   },
+  preview: {
+    port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
+    host: true,
+  },
 })

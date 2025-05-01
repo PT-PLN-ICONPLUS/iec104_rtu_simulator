@@ -1,5 +1,5 @@
 # Use the official Node.js image as the base image
-FROM node:22
+FROM node:22 AS builder
 
 ARG IMAGE_TAG
 ARG REACT_PORT
@@ -18,8 +18,10 @@ RUN npm install
 # Copy the rest of the application code
 COPY frontend/ /srv/frontend-${IMAGE_TAG}
 
+RUN npm run build
+
 # Expose the port the app runs on
 EXPOSE ${REACT_PORT}
 
 # Command to run the application with --host option
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "preview", "--", "--host", "--port", "${REACT_PORT}"]
