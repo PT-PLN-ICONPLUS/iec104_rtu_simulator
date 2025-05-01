@@ -2,9 +2,9 @@
 FROM node:22 AS builder
 
 ARG IMAGE_TAG
-ARG REACT_PORT
+ARG REACT_NODEPORT
 ENV IMAGE_TAG=${IMAGE_TAG}
-ENV REACT_PORT=${REACT_PORT}
+ENV REACT_NODEPORT=${REACT_NODEPORT}
 
 # Copy package.json and package-lock.json
 COPY frontend/package*.json /srv/frontend-${IMAGE_TAG}/
@@ -21,7 +21,7 @@ COPY frontend/ /srv/frontend-${IMAGE_TAG}
 RUN npm run build
 
 # Expose the port the app runs on
-EXPOSE ${REACT_PORT}
+EXPOSE ${REACT_NODEPORT}
 
 # Command to run the application with --host option
-CMD npm run preview -- --host --port ${REACT_PORT}
+CMD npm run preview -- --host --port ${REACT_NODEPORT}
