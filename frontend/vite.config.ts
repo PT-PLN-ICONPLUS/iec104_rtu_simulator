@@ -17,10 +17,21 @@ export default defineConfig({
   define: {
     'process.env': process.env
   },
+  build: {
+    assetsInlineLimit: 0,
+    minify: 'esbuild',
+    sourcemap: true,
+  },
   server: {
     port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
+    headers: {
+      'Content-Security-Policy': "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:"
+    }
   },
   preview: {
     port: process.env.REACT_PORT ? parseInt(process.env.REACT_PORT) : undefined,
+    headers: {
+      'Content-Security-Policy': "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:"
+    }
   },
 })
