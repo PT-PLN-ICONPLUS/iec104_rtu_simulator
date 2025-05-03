@@ -9,6 +9,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
   // State variables based on your data structure
   const [isSBO, setIsSBO] = useState(item.is_sbo);
   const [isDPMode, setIsDPMode] = useState(item.is_double_point);
+  const [isSDPMode, setIsSDPMode] = useState(item.is_sdp_mode || false);
   const [isRemote, setIsRemote] = useState(item.remote === 1);
 
   const [cbStatusOpen, setCbStatusOpen] = useState(item.cb_status_open);
@@ -31,6 +32,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         setIsRemote(filtered[0].remote === 1);
         setIsSBO(filtered[0].is_sbo);
         setIsDPMode(filtered[0].is_double_point);
+        setIsSDPMode(filtered[0].is_sdp_mode || false);
       }
     }
     socket.on('circuit_breakers', handleUpdate);
@@ -40,19 +42,30 @@ function CircuitBreaker(item: CircuitBreakerItem) {
   }, [item.id]);
 
   const handleOpen = () => {
-    if (isDPMode) {
+    if (isDPMode && !isSDPMode) {
+      // Full double point mode (both status and control are double point)
       setCbStatusDP(openValueDoublePoint);
 
-      // Handle open logic for double point
       socket.emit('update_circuit_breaker', {
         id: item.id,
         cb_status_dp: openValueDoublePoint,
         control_dp: openValueDoublePoint
       });
+    } else if (isSDPMode) {
+      // SDP mode: status is double point, control is single point
+      setCbStatusDP(openValueDoublePoint);
+
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_dp: openValueDoublePoint,
+        control_open: 1,
+        control_close: 0
+      });
     } else {
+      // Full single point mode
       setCbStatusOpen(1);
       setCbStatusClose(0);
-      // Handle open logic for single point
+
       socket.emit('update_circuit_breaker', {
         id: item.id,
         cb_status_open: 1,
@@ -61,22 +74,33 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_close: 0
       });
     }
-  }
+  };
 
   const handleClose = () => {
-    if (isDPMode) {
+    if (isDPMode && !isSDPMode) {
+      // Full double point mode
       setCbStatusDP(closeValueDoublePoint);
-      // Handle close logic for double point
+
       socket.emit('update_circuit_breaker', {
         id: item.id,
         cb_status_dp: closeValueDoublePoint,
         control_dp: closeValueDoublePoint
       });
+    } else if (isSDPMode) {
+      // SDP mode: status is double point, control is single point
+      setCbStatusDP(closeValueDoublePoint);
+
+      socket.emit('update_circuit_breaker', {
+        id: item.id,
+        cb_status_dp: closeValueDoublePoint,
+        control_open: 0,
+        control_close: 1
+      });
     } else {
+      // Full single point mode
       setCbStatusOpen(0);
       setCbStatusClose(1);
 
-      // Handle close logic for single point
       socket.emit('update_circuit_breaker', {
         id: item.id,
         cb_status_open: 0,
@@ -85,7 +109,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_close: 1
       });
     }
-  }
+  };
 
   const handleTrip = () => {
     if (isDPMode) {
@@ -93,12 +117,22 @@ function CircuitBreaker(item: CircuitBreakerItem) {
 
       setCbStatusDP(newStatus);
 
-      // Handle trip logic for double point
-      socket.emit('update_circuit_breaker', {
-        id: item.id,
-        cb_status_dp: newStatus,
-        control_dp: newStatus
-      });
+      if (isSDPMode) {
+        // SDP mode: status is double point, control is single point
+        socket.emit('update_circuit_breaker', {
+          id: item.id,
+          cb_status_dp: newStatus,
+          control_open: newStatus === 1 ? 1 : 0,
+          control_close: newStatus === 2 ? 1 : 0
+        });
+      } else {
+        // Full double point mode
+        socket.emit('update_circuit_breaker', {
+          id: item.id,
+          cb_status_dp: newStatus,
+          control_dp: newStatus
+        });
+      }
     } else {
       const newStatusOpen = item.cb_status_open === 1 ? 0 : 1;
       const newStatusClose = item.cb_status_close === 1 ? 0 : 1;
@@ -115,31 +149,53 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_close: newStatusClose,
       });
     }
-  }
+  };
 
   const handleInvalid = (type = 0) => {
     if (isDPMode) {
       // Handle invalid logic for double point
       if (type === invalidValueDoublePoint0) {
         setCbStatusDP(invalidValueDoublePoint0);
-        // Set to invalid 0
-        socket.emit('update_circuit_breaker', {
-          id: item.id,
-          cb_status_dp: invalidValueDoublePoint0,
-          control_dp: invalidValueDoublePoint0
-        });
+
+        if (isSDPMode) {
+          // SDP mode
+          socket.emit('update_circuit_breaker', {
+            id: item.id,
+            cb_status_dp: invalidValueDoublePoint0,
+            control_open: 0,
+            control_close: 0
+          });
+        } else {
+          // Full double point mode
+          socket.emit('update_circuit_breaker', {
+            id: item.id,
+            cb_status_dp: invalidValueDoublePoint0,
+            control_dp: invalidValueDoublePoint0
+          });
+        }
       }
       else if (type === invalidValueDoublePoint3) {
         setCbStatusDP(invalidValueDoublePoint3);
-        // Set to invalid 3
-        socket.emit('update_circuit_breaker', {
-          id: item.id,
-          cb_status_dp: invalidValueDoublePoint3,
-          control_dp: invalidValueDoublePoint3
-        });
+
+        if (isSDPMode) {
+          // SDP mode
+          socket.emit('update_circuit_breaker', {
+            id: item.id,
+            cb_status_dp: invalidValueDoublePoint3,
+            control_open: 1,
+            control_close: 1
+          });
+        } else {
+          // Full double point mode
+          socket.emit('update_circuit_breaker', {
+            id: item.id,
+            cb_status_dp: invalidValueDoublePoint3,
+            control_dp: invalidValueDoublePoint3
+          });
+        }
       }
     }
-  }
+  };
 
   const toggleLocalRemote = () => {
     setIsRemote(!isRemote);
@@ -159,17 +215,50 @@ function CircuitBreaker(item: CircuitBreakerItem) {
     });
   };
 
-  const toggleDP = () => {
-    setIsDPMode(!isDPMode);
+  const setSPMode = () => {
+    setIsDPMode(false);
+    setIsSDPMode(false);
 
     socket.emit('update_circuit_breaker', {
       id: item.id,
-      is_double_point: !isDPMode
+      is_double_point: false,
+      is_sdp_mode: false
     });
+  };
+
+  const setDPMode = () => {
+    setIsDPMode(true);
+    setIsSDPMode(false);
+
+    socket.emit('update_circuit_breaker', {
+      id: item.id,
+      is_double_point: true,
+      is_sdp_mode: false
+    });
+  };
+
+  const setSDPMode = () => {
+    setIsDPMode(true);
+    setIsSDPMode(true);
+
+    socket.emit('update_circuit_breaker', {
+      id: item.id,
+      is_double_point: true,
+      is_sdp_mode: true
+    });
+  };
+
+  const getModeText = () => {
+    if (isDPMode && isSDPMode) return "Double Status, Single Controls";
+    if (isDPMode) return "Double Status & Control";
+    return "Single Status & Controls";
   };
 
   return (
     <div>
+      <div className="text-center py-2 border-b">
+        <p className="font-bold text-lg">{item.name}</p>
+      </div>
       <div className="flex flex-row border-b-2 py-2">
         <div className="flex flex-col my-2 mx-6 gap-2">
           {/* Display lights */}
@@ -248,27 +337,30 @@ function CircuitBreaker(item: CircuitBreakerItem) {
 
         <div className="flex flex-col justify-center gap-3">
           <div className="text-sm flex flex-col">
-            <p className="font-bold">{item.name}</p>
-            {isDPMode ? (
+            {/* Removed the name from here as it's now at the top */}
+            {isDPMode && isSDPMode ? (
               <>
-                <p>IOA CB Status DP: {item.ioa_cb_status_dp}</p>
-                <p>IOA Control DP: {item.ioa_control_dp}</p>
+                <p>IOA CB Status DP: <span className="font-bold">{item.ioa_cb_status_dp}</span></p>
+                <p>IOA Control Open/Close: <span className="font-bold">{item.ioa_control_open}/{item.ioa_control_close}</span></p>
+              </>
+            ) : isDPMode ? (
+              <>
+                <p>IOA CB Status DP: <span className="font-bold">{item.ioa_cb_status_dp}</span></p>
+                <p>IOA Control DP: <span className="font-bold">{item.ioa_control_dp}</span></p>
               </>
             ) : (
               <>
-                <p>IOA CB Status Open: {item.ioa_cb_status}</p>
-                <p>IOA CB Status Close: {item.ioa_cb_status_close}</p>
-                <p>IOA Control Open: {item.ioa_control_open} </p>
-                <p>IOA Control Close: {item.ioa_control_close} </p>
+                <p>IOA CB Status Open/Close: <span className="font-bold">{item.ioa_cb_status}/{item.ioa_cb_status_close}</span></p>
+                <p>IOA Control Open/Close: <span className="font-bold">{item.ioa_control_open}/{item.ioa_control_close}</span></p>
               </>
             )}
-            <p>IOA Local/Remote: {item.ioa_local_remote}</p>
-            <p>SBO: {isSBO ? "True" : "False"}</p>
-            <p>Type: {isDPMode ? "Double" : "Single"} Point Command</p>
+            <p>IOA Local/Remote: <span className="font-bold">{item.ioa_local_remote}</span></p>
+            <p>SBO: <span className="font-bold">{isSBO ? "True" : "False"}</span></p>
+            <p>Mode: {getModeText()}</p>
           </div>
 
           {/* Toggle buttons */}
-          <div className="flex flex-row gap-4 text-white">
+          <div className="flex flex-row gap-2 text-white">
             <Button
               size="sm"
               className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${item.remote == 1 ? 'opacity-50' : ''}`}
@@ -277,13 +369,31 @@ function CircuitBreaker(item: CircuitBreakerItem) {
             >
               SBO
             </Button>
+
+            {/* Replace the toggle buttons with mode selector buttons */}
             <Button
               size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
-              onClick={() => !isRemote && toggleDP()}
-              disabled={isRemote && !isDPMode}
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${!isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+              onClick={() => !isRemote && setSPMode()}
+              disabled={isRemote}
             >
-              Double Point
+              SP
+            </Button>
+            <Button
+              size="sm"
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+              onClick={() => !isRemote && setDPMode()}
+              disabled={isRemote}
+            >
+              DP
+            </Button>
+            <Button
+              size="sm"
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+              onClick={() => !isRemote && setSDPMode()}
+              disabled={isRemote}
+            >
+              SDP
             </Button>
           </div>
 

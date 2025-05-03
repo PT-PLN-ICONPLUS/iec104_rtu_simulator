@@ -6,6 +6,7 @@ ARG IEC104_PORT
 ENV IMAGE_TAG=${IMAGE_TAG}
 ENV FASTAPI_PORT=${FASTAPI_PORT}
 ENV IEC104_PORT=${IEC104_PORT}
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
@@ -37,8 +38,7 @@ RUN python3 -m venv venv && \
 ENV PATH="/srv/backend-${IMAGE_TAG}/venv/bin:$PATH"
 
 # Expose the necessary port
-EXPOSE ${FASTAPI_PORT}
-EXPOSE ${IEC104_PORT}
+EXPOSE ${FASTAPI_PORT} ${IEC104_PORT}
 
 # Command to run the application
 CMD ["python3", "main.py"]

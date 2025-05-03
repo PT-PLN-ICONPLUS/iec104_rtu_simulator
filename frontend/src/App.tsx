@@ -80,6 +80,7 @@ function App() {
       ioa_local_remote: data.ioa_local_remote,
       is_sbo: false,
       is_double_point: data.is_double_point,
+      is_sdp_mode: data.is_sdp_mode,
 
       remote: 0,
       cb_status_open: 0,
@@ -255,30 +256,31 @@ function App() {
           />
           <div className="flex-1 overflow-y-auto">
             {circuitBreakers.map(item => (
-            <CircuitBreaker
-              key={item.id}
-              id={item.id}
-              name={item.name}
-              ioa_cb_status={item.ioa_cb_status}
-              ioa_cb_status_close={item.ioa_cb_status_close}
-              ioa_cb_status_dp={item.ioa_cb_status_dp}
-              ioa_control_dp={item.ioa_control_dp}
-              ioa_control_open={item.ioa_control_open}
-              ioa_control_close={item.ioa_control_close}
-              ioa_local_remote={item.ioa_local_remote}
+              <CircuitBreaker
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                ioa_cb_status={item.ioa_cb_status}
+                ioa_cb_status_close={item.ioa_cb_status_close}
+                ioa_cb_status_dp={item.ioa_cb_status_dp}
+                ioa_control_dp={item.ioa_control_dp}
+                ioa_control_open={item.ioa_control_open}
+                ioa_control_close={item.ioa_control_close}
+                ioa_local_remote={item.ioa_local_remote}
+                is_sdp_mode={item.is_sdp_mode}
 
-              is_sbo={item.is_sbo}
-              is_double_point={item.is_double_point}
+                is_sbo={item.is_sbo}
+                is_double_point={item.is_double_point}
 
-              remote={item.remote}
-              cb_status_open={0}
-              cb_status_close={item.cb_status_close}
-              cb_status_dp={item.cb_status_dp}
-              control_open={item.control_open}
-              control_close={item.control_close}
-              control_dp={item.control_dp}
-            />
-          ))}
+                remote={item.remote}
+                cb_status_open={0}
+                cb_status_close={item.cb_status_close}
+                cb_status_dp={item.cb_status_dp}
+                control_open={item.control_open}
+                control_close={item.control_close}
+                control_dp={item.control_dp}
+              />
+            ))}
           </div>
         </div>
 
@@ -292,17 +294,17 @@ function App() {
           />
           <div className="flex-1 overflow-y-auto">
             {teleSignals.map(item => (
-            <TeleSignal
-              key={item.id}
-              id={item.id}
-              name={item.name}
-              ioa={item.ioa}
-              value={item.value}
-              auto_mode={item.auto_mode}
-              min_value={item.min_value}
-              max_value={item.max_value}
-              interval={item.interval} />
-          ))}
+              <TeleSignal
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                ioa={item.ioa}
+                value={item.value}
+                auto_mode={item.auto_mode}
+                min_value={item.min_value}
+                max_value={item.max_value}
+                interval={item.interval} />
+            ))}
           </div>
         </div>
 
@@ -316,20 +318,20 @@ function App() {
           />
           <div className="flex-1 overflow-y-auto">
             {teleMetries.map(item => (
-            <Telemetry
-              key={item.id}
-              id={item.id}
-              name={item.name}
-              ioa={item.ioa}
-              unit={item.unit}
-              value={item.value}
-              min_value={item.min_value}
-              max_value={item.max_value}
-              scale_factor={item.scale_factor || 1.0}
-              auto_mode={item.auto_mode}
-              interval={item.interval}
-            />
-          ))}
+              <Telemetry
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                ioa={item.ioa}
+                unit={item.unit}
+                value={item.value}
+                min_value={item.min_value}
+                max_value={item.max_value}
+                scale_factor={item.scale_factor || 1.0}
+                auto_mode={item.auto_mode}
+                interval={item.interval}
+              />
+            ))}
           </div>
         </div>
       </div>

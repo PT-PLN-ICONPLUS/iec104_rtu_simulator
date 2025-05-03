@@ -14,6 +14,7 @@ class CircuitBreakerItem(BaseModel):
     ioa_local_remote: int        # Local/Remote Position (Coil)
     is_sbo: bool
     is_double_point: bool
+    is_sdp_mode: Optional[bool] = False
     
     remote: int = 0
     cb_status_open: int = 0
