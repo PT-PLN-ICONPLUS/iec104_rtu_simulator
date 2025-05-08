@@ -61,6 +61,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_open: 1,
         control_close: 0
       });
+      // Do NOT update setCbStatusOpen or setCbStatusClose here!
     } else {
       // Full single point mode
       setCbStatusOpen(1);
@@ -96,6 +97,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
         control_open: 0,
         control_close: 1
       });
+      // Do NOT update setCbStatusOpen or setCbStatusClose here!
     } else {
       // Full single point mode
       setCbStatusOpen(0);

@@ -7,13 +7,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class IEC60870_5_104_server:
-    def __init__(self, host, port, ioa_list=None, circuit_breakers=None, telesignals=None, telemetries=None):
+    def __init__(self, host, port, ioa_list=None, socketio_server=None, circuit_breakers=None, telesignals=None, telemetries=None):
         self.clockSyncHandler = CS101_ClockSynchronizationHandler(self.clock)
         self.interrogationHandler = CS101_InterrogationHandler(self.GI_h)
         self.asduHandler = CS101_ASDUHandler(self.ASDU_h)
         self.connectionRequestHandler = CS104_ConnectionRequestHandler(self.connection_request)
         self.connectionEventHandler = CS104_ConnectionEventHandler(self.connection_event)
         self.readEventHandler = CS101_ReadHandler(self.read)
+        self.socketio = socketio_server
 
         self.slave = CS104_Slave_create(100, 100)
         CS104_Slave_setLocalAddress(self.slave, host)
@@ -350,14 +351,14 @@ class IEC60870_5_104_server:
 # Emit the updated IOA data
             if hasattr(self, 'socketio') and self.socketio:
                 if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
-                    self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
                     logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
+                    self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
                 elif self.telesignals and ioa in [ts.ioa for ts in self.telesignals.values()]:
-                    self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
                     logger.info(f"Updated telesignal {ioa} to {self.telesignals[ioa].data}, triggered in update_ioa function")
+                    self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
                 elif self.telemetries and ioa in [tm.ioa for tm in self.telemetries.values()]:
-                    self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
                     logger.info(f"Updated telemetry {ioa} to {self.telemetries[ioa].data}, triggered in update_ioa function")
+                    self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
         return 0
     
     def remove_ioa(self, ioa):

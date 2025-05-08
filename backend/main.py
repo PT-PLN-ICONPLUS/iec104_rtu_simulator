@@ -91,17 +91,18 @@ circuit_breakers: Dict[str, CircuitBreakerItem] = {}
 telesignals: Dict[str, TeleSignalItem] = {}
 telemetries: Dict[str, TelemetryItem] = {}
 
+app = FastAPI()
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+
 IEC_SERVER = IEC60870_5_104_server(
     IEC_SERVER_HOST, 
     IEC_SERVER_PORT, 
     IOA_LIST,
+    socketio_server=sio,
     circuit_breakers=circuit_breakers,
     telesignals=telesignals,
     telemetries=telemetries
 )
-
-app = FastAPI()
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 
 app.add_middleware(
     CORSMiddleware,
