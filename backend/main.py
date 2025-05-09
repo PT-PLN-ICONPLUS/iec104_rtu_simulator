@@ -20,6 +20,7 @@ from lib.lib60870 import (
     DoubleCommand,
     DoublePointInformation
 )
+from functools import partial
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -141,18 +142,24 @@ async def get_initial_data(sid):
         await sio.emit('get_initial_data_error', {"error": "Failed to fetch initial data"}, room=sid)
         
 def add_circuit_breaker_ioa(item: CircuitBreakerItem):
-    """Add IOA for circuit breaker."""
-    IEC_SERVER.add_ioa(item.ioa_cb_status, SinglePointInformation, 0, None, True)
-    IEC_SERVER.add_ioa(item.ioa_cb_status_close, SinglePointInformation, 0, None, True)
     
-    IEC_SERVER.add_ioa(item.ioa_control_open, SingleCommand, 0, None, True)
-    IEC_SERVER.add_ioa(item.ioa_control_close, SingleCommand, 0, None, True)
+    callback = lambda ioa, ioa_object, server, is_select=None: (
+        server.update_ioa_from_server(ioa, ioa_object['data']) 
+        if not is_select else True
+    )
+    
+    """Add IOA for circuit breaker."""
+    IEC_SERVER.add_ioa(item.ioa_cb_status, SinglePointInformation, 0, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_cb_status_close, SinglePointInformation, 0, callback, True)
+    
+    IEC_SERVER.add_ioa(item.ioa_control_open, SingleCommand, 0, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_control_close, SingleCommand, 0, callback, True)
 
     if item.is_double_point and item.ioa_cb_status_dp:
-        IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, None, True)
-        IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, None, True)
+        IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, callback, True)
+        IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, callback, True)
     
-    IEC_SERVER.add_ioa(item.ioa_local_remote, SinglePointInformation, 0, None, True)
+    IEC_SERVER.add_ioa(item.ioa_local_remote, SinglePointInformation, 0, callback, True)
     
     logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
     
@@ -251,8 +258,13 @@ async def add_telesignal(sid, data):
     item = TeleSignalItem(**data)
     telesignals[item.id] = item
     
+    callback = lambda ioa, ioa_object, server, is_select=None: (
+        server.update_ioa_from_server(ioa, ioa_object['data']) 
+        if not is_select else True
+    )
+    
     # Add a SinglePointInformation for telesignal
-    result = IEC_SERVER.add_ioa(item.ioa, SinglePointInformation, item.value, None, True)
+    result = IEC_SERVER.add_ioa(item.ioa, SinglePointInformation, item.value, callback, True)
     if result == 0:
         # Initialize with auto_mode disabled
         IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = data.get('auto_mode', False)
@@ -307,8 +319,13 @@ async def add_telemetry(sid, data):
     telemetries[item.id] = item
     # Scale value as needed for integer representation
     scaled_value = int(item.value / item.scale_factor)
+
+    callback = lambda ioa, ioa_object, server, is_select=None: (
+        server.update_ioa_from_server(ioa, ioa_object['data']) 
+        if not is_select else True
+    )
     
-    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, None, True)
+    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, callback, True)
     if result == 0:
         # Initialize with auto_mode disabled
         IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False

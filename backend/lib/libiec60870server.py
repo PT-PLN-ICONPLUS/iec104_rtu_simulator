@@ -347,18 +347,46 @@ class IEC60870_5_104_server:
                 #/* Add ASDU to slave event queue - don't release the ASDU afterwards!
                 CS104_Slave_enqueueASDU(self.slave, newAsdu)
                 CS101_ASDU_destroy(newAsdu)
+
+        return 0
+    
+    def update_ioa_from_server(self, ioa, data):
+        value = int(float(data))
+        if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
+            self.ioa_list[ioa]['data'] = value
+            if self.ioa_list[ioa]['event'] == True:
+                newAsdu = CS101_ASDU_create(self.alParams, False, CS101_COT_SPONTANEOUS, 0, 1, False, False)
+                if self.ioa_list[ioa]['type'] == MeasuredValueScaled:
+                    self.ioa_list[ioa]['data'] = int(float(data))
+                    io = cast(MeasuredValueScaled_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == SinglePointInformation:
+                    self.ioa_list[ioa]['data'] = int(float(data))
+                    io = cast(SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == DoublePointInformation:
+                    self.ioa_list[ioa]['data'] = int(float(data))
+                    io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+                elif self.ioa_list[ioa]['type'] == MeasuredValueShort:
+                    self.ioa_list[ioa]['data'] = float(data)
+                else:
+                    return -1
+
+                CS101_ASDU_addInformationObject(newAsdu, io)
+                InformationObject_destroy(io)
+                #/* Add ASDU to slave event queue - don't release the ASDU afterwards!
+                CS104_Slave_enqueueASDU(self.slave, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
                 
 # Emit the updated IOA data
             if hasattr(self, 'socketio') and self.socketio:
                 if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
-                    logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
                     self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
+                    logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
                 elif self.telesignals and ioa in [ts.ioa for ts in self.telesignals.values()]:
-                    logger.info(f"Updated telesignal {ioa} to {self.telesignals[ioa].data}, triggered in update_ioa function")
                     self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
+                    logger.info(f"Updated telesignal {ioa} to {self.telesignals[ioa].data}, triggered in update_ioa function")
                 elif self.telemetries and ioa in [tm.ioa for tm in self.telemetries.values()]:
-                    logger.info(f"Updated telemetry {ioa} to {self.telemetries[ioa].data}, triggered in update_ioa function")
                     self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
+                    logger.info(f"Updated telemetry {ioa} to {self.telemetries[ioa].data}, triggered in update_ioa function")
         return 0
     
     def remove_ioa(self, ioa):
