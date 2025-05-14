@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import asyncio
 import datetime
 from .lib60870 import *
 import time
@@ -267,7 +268,7 @@ class IEC60870_5_104_server:
 
                 if (CS101_ASDU_getTypeID(asdu) == C_DC_NA_1):
                     logger.info("Received double command")
-                    if ioa_object['type'] == DoubleCommand:
+                    if ioa_object['type'] == DoubleCommand or ioa_object['type'] == DoubleCommandWithCP56Time2a:
                         sc = cast( io, DoubleCommand)
                         logger.info(f"IOA: {InformationObject_getObjectAddress(io)} switch to {DoubleCommand_getState(sc)}, select:{DoubleCommand_isSelect(sc)}")
                         ioa_object['data'] = DoubleCommand_getState(sc)
@@ -362,51 +363,48 @@ class IEC60870_5_104_server:
                 logger.error(f"Could not convert data {data} to integer for IOA {ioa}")
                 return -1
         
-        logger.info(f"IOA: {ioa}")
-        logger.info(f"IOA LIST: {self.ioa_list}")
-        logger.info(f"VALUE: {value}")
-        logger.info(f"DATA: {data}")
-        logger.info(f"IOA LIST DATA: {self.ioa_list[ioa]}")
-        logger.info(f"SOCKETIO: {self.socketio}")
+        self.ioa_list[ioa]['data'] = value
         
-        if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']:
-            logger.info(f"Updating IOA {ioa} with value {value}")
-            self.ioa_list[ioa]['data'] = value
-            if self.ioa_list[ioa]['event'] == True:
-                logger.info(f"Creating new ASDU for IOA {ioa}")
-                newAsdu = CS101_ASDU_create(self.alParams, False, CS101_COT_SPONTANEOUS, 0, 1, False, False)
-                if self.ioa_list[ioa]['type'] == MeasuredValueScaled:
-                    self.ioa_list[ioa]['data'] = int(float(data))
-                    io = cast(MeasuredValueScaled_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
-                elif self.ioa_list[ioa]['type'] == SinglePointInformation:
-                    self.ioa_list[ioa]['data'] = int(float(data))
-                    io = cast(SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
-                elif self.ioa_list[ioa]['type'] == DoublePointInformation:
-                    self.ioa_list[ioa]['data'] = int(float(data))
-                    io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
-                elif self.ioa_list[ioa]['type'] == MeasuredValueShort:
-                    self.ioa_list[ioa]['data'] = float(data)
-                else:
-                    return -1
-
-                CS101_ASDU_addInformationObject(newAsdu, io)
-                InformationObject_destroy(io)
-                #/* Add ASDU to slave event queue - don't release the ASDU afterwards!
-                CS104_Slave_enqueueASDU(self.slave, newAsdu)
-                CS101_ASDU_destroy(newAsdu)
+        # Handle the mapping between control and status IOAs
+        # For circuit breakers, identify if this is a control IOA and update the corresponding status IOA
+        if self.circuit_breakers:
+            for cb in self.circuit_breakers.values():
+                # Check if this is a control open command
+                if ioa == cb.ioa_control_open and value == 1:
+                    logger.info(f"Control open command received for IOA {ioa}, updating status IOAs")
+                    # Update the corresponding status IOAs
+                    self.update_ioa(cb.ioa_control_open, 1)  # Set control open to 1
+                    self.update_ioa(cb.ioa_cb_status, 1)  # Set status open to 1
+                    self.update_ioa(cb.ioa_cb_status_close, 0)  # Set status close to 0
+                    if cb.is_double_point and cb.ioa_cb_status_dp:
+                        self.update_ioa(cb.ioa_cb_status_dp, 1)  # Set double point status to 1 (open)
+                    break
                 
-# Emit the updated IOA data
-            if hasattr(self, 'socketio') and self.socketio:
-                logger.info(f"Emitting updated IOA data for {ioa}")
-                if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
-                    self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
-                    logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
-                elif self.telesignals and ioa in [ts.ioa for ts in self.telesignals.values()]:
-                    self.socketio.emit('telesignals', [item.model_dump() for item in self.telesignals.values()])
-                    logger.info(f"Updated telesignal {ioa} to {self.telesignals[ioa].data}, triggered in update_ioa function")
-                elif self.telemetries and ioa in [tm.ioa for tm in self.telemetries.values()]:
-                    self.socketio.emit('telemetries', [item.model_dump() for item in self.telemetries.values()])
-                    logger.info(f"Updated telemetry {ioa} to {self.telemetries[ioa].data}, triggered in update_ioa function")
+                # Check if this is a control close command
+                elif ioa == cb.ioa_control_close and value == 1:
+                    logger.info(f"Control close command received for IOA {ioa}, updating status IOAs")
+                    # Update the corresponding status IOAs
+                    self.update_ioa(cb.ioa_control_close, 1)
+                    self.update_ioa(cb.ioa_cb_status, 0)  # Set status open to 0
+                    self.update_ioa(cb.ioa_cb_status_close, 1)  # Set status close to 1
+                    if cb.is_double_point and cb.ioa_cb_status_dp:
+                        self.update_ioa(cb.ioa_cb_status_dp, 2)  # Set double point status to 2 (closed)
+                    break
+                
+                # Check if this is a double point control command
+                elif cb.is_double_point and cb.ioa_control_dp and ioa == cb.ioa_control_dp:
+                    logger.info(f"Double point control command received for IOA {ioa} with value {value}")
+                    if value == 1:  # Open command in double point
+                        self.update_ioa(cb.ioa_control_dp, 1)
+                        self.update_ioa(cb.ioa_cb_status, 1)
+                        self.update_ioa(cb.ioa_cb_status_close, 0)
+                        self.update_ioa(cb.ioa_cb_status_dp, 1)
+                    elif value == 2:  # Close command in double point
+                        self.update_ioa(cb.ioa_control_dp, 2)
+                        self.update_ioa(cb.ioa_cb_status, 0)
+                        self.update_ioa(cb.ioa_cb_status_close, 1)
+                        self.update_ioa(cb.ioa_cb_status_dp, 2)
+                    break
         return 0
     
     def remove_ioa(self, ioa):

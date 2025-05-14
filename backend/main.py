@@ -444,6 +444,110 @@ async def import_data(sid, data):
         logger.error(f"Error importing data: {e}")
         await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
     
+async def monitor_circuit_breaker_changes():
+    """
+    Continuously monitor circuit breaker values for changes from external sources.
+    When changes are detected, emit the updated values to the frontend.
+    """
+    logger.info("Starting circuit breaker monitoring task")
+    
+    # Store previous values for comparison
+    previous_values = {}
+    
+    while True:
+        try:
+            changes_detected = False
+            
+            # Check all circuit breakers for changes by comparing IEC_SERVER values with local values
+            for cb_id, cb in list(circuit_breakers.items()):
+                cb_changed = False
+                
+                # Initialize previous values dictionary for this circuit breaker if not exists
+                if cb_id not in previous_values:
+                    previous_values[cb_id] = {
+                        "cb_status": None, 
+                        "cb_status_close": None,
+                        "cb_status_dp": None,
+                        "control_open": None,
+                        "control_close": None,
+                        "control_dp": None,
+                        "remote": None
+                    }
+                
+                # Check if single point status values changed
+                if cb.ioa_cb_status in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_cb_status]['data']
+                    if previous_values[cb_id]["cb_status"] != server_value:
+                        previous_values[cb_id]["cb_status"] = server_value
+                        circuit_breakers[cb_id].cb_status_open = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} status open: {server_value}")
+                
+                if cb.ioa_cb_status_close in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_cb_status_close]['data']
+                    if previous_values[cb_id]["cb_status_close"] != server_value:
+                        previous_values[cb_id]["cb_status_close"] = server_value
+                        circuit_breakers[cb_id].cb_status_close = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} status close: {server_value}")
+                
+                # Check if double point status value changed
+                if cb.is_double_point and cb.ioa_cb_status_dp and cb.ioa_cb_status_dp in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_cb_status_dp]['data']
+                    if previous_values[cb_id]["cb_status_dp"] != server_value:
+                        previous_values[cb_id]["cb_status_dp"] = server_value
+                        circuit_breakers[cb_id].cb_status_dp = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} status DP: {server_value}")
+                
+                # Check if control values changed
+                if cb.ioa_control_open in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_control_open]['data']
+                    if previous_values[cb_id]["control_open"] != server_value:
+                        previous_values[cb_id]["control_open"] = server_value
+                        circuit_breakers[cb_id].control_open = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} control open: {server_value}")
+                
+                if cb.ioa_control_close in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_control_close]['data']
+                    if previous_values[cb_id]["control_close"] != server_value:
+                        previous_values[cb_id]["control_close"] = server_value
+                        circuit_breakers[cb_id].control_close = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} control close: {server_value}")
+                
+                if cb.is_double_point and cb.ioa_control_dp and cb.ioa_control_dp in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_control_dp]['data']
+                    if previous_values[cb_id]["control_dp"] != server_value:
+                        previous_values[cb_id]["control_dp"] = server_value
+                        circuit_breakers[cb_id].control_dp = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} control DP: {server_value}")
+                
+                # Check if remote value changed
+                if cb.ioa_local_remote in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_local_remote]['data']
+                    if previous_values[cb_id]["remote"] != server_value:
+                        previous_values[cb_id]["remote"] = server_value
+                        circuit_breakers[cb_id].remote = server_value
+                        cb_changed = True
+                        logger.info(f"External change detected for CB {cb.name} remote: {server_value}")
+                
+                if cb_changed:
+                    changes_detected = True
+            
+            # If any circuit breaker changed, emit the updated list to all connected clients
+            if changes_detected:
+                await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            
+            # Sleep briefly to avoid excessive CPU usage
+            await asyncio.sleep(0.1)
+            
+        except Exception as e:
+            logger.error(f"Error in circuit breaker monitoring task: {str(e)}")
+            await asyncio.sleep(3)  # Wait before retrying if there's an error
+    
 async def poll_ioa_values():
     """
     Continuously poll IOA values from the IEC server and send them to frontend clients.
@@ -551,6 +655,7 @@ async def lifespan(app: FastAPI):
         
     # Start the IOA polling task
     polling_task = asyncio.create_task(poll_ioa_values())
+    monitor_task = asyncio.create_task(monitor_circuit_breaker_changes())
     
     yield 
     
