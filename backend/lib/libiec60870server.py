@@ -351,10 +351,29 @@ class IEC60870_5_104_server:
         return 0
     
     def update_ioa_from_server(self, ioa, data):
-        value = int(float(data))
-        if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
+        logger.info(f"Called update ioa_from_server with ioa: {ioa} and data: {data}")
+        value = None        
+        if isinstance(data, bool):
+            value = 1 if data else 0
+        else:
+            try:
+                value = int(float(data))
+            except (ValueError, TypeError):
+                logger.error(f"Could not convert data {data} to integer for IOA {ioa}")
+                return -1
+        
+        logger.info(f"IOA: {ioa}")
+        logger.info(f"IOA LIST: {self.ioa_list}")
+        logger.info(f"VALUE: {value}")
+        logger.info(f"DATA: {data}")
+        logger.info(f"IOA LIST DATA: {self.ioa_list[ioa]}")
+        logger.info(f"SOCKETIO: {self.socketio}")
+        
+        if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']:
+            logger.info(f"Updating IOA {ioa} with value {value}")
             self.ioa_list[ioa]['data'] = value
             if self.ioa_list[ioa]['event'] == True:
+                logger.info(f"Creating new ASDU for IOA {ioa}")
                 newAsdu = CS101_ASDU_create(self.alParams, False, CS101_COT_SPONTANEOUS, 0, 1, False, False)
                 if self.ioa_list[ioa]['type'] == MeasuredValueScaled:
                     self.ioa_list[ioa]['data'] = int(float(data))
@@ -378,6 +397,7 @@ class IEC60870_5_104_server:
                 
 # Emit the updated IOA data
             if hasattr(self, 'socketio') and self.socketio:
+                logger.info(f"Emitting updated IOA data for {ioa}")
                 if self.circuit_breakers and ioa in [cb.ioa_cb_status for cb in self.circuit_breakers.values()]:
                     self.socketio.emit('circuit_breakers', [item.model_dump() for item in self.circuit_breakers.values()])
                     logger.info(f"Updated circuit breaker {ioa} to {self.circuit_breakers[ioa].data}, triggered in update_ioa function")
