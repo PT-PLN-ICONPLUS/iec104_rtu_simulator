@@ -18,7 +18,8 @@ from lib.lib60870 import (
     MeasuredValueScaled,
     SingleCommand,
     DoubleCommand,
-    DoublePointInformation
+    DoublePointInformation,
+    MeasuredValueShort
 )
 from functools import partial
 
@@ -317,25 +318,37 @@ async def remove_telesignal(sid, data):
 async def add_telemetry(sid, data):
     item = TelemetryItem(**data)
     telemetries[item.id] = item
-    # Scale value as needed for integer representation
-    scaled_value = int(item.value / item.scale_factor)
+    
+    # Determine type based on scale factor
+    if item.scale_factor >= 1:
+        # Use MeasuredValueScaled for integer or larger scale factors
+        value_type = MeasuredValueScaled
+        # Scale value as needed for integer representation
+        scaled_value = int(item.value / item.scale_factor)
+    else:
+        # Use MeasuredValueShort for decimal scale factors for better precision
+        value_type = MeasuredValueShort
+        # Use actual value for MeasuredValueShort (float)
+        scaled_value = item.value
 
     callback = lambda ioa, ioa_object, server, is_select=None: (
         server.update_ioa_from_server(ioa, ioa_object['data']) 
         if not is_select else True
     )
     
-    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, callback, True)
+    result = IEC_SERVER.add_ioa(item.ioa, value_type, scaled_value, callback, True)
     if result == 0:
         # Initialize with auto_mode disabled
         IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
         IEC_SERVER.ioa_list[item.ioa]['min_value'] = item.min_value
         IEC_SERVER.ioa_list[item.ioa]['max_value'] = item.max_value
+        IEC_SERVER.ioa_list[item.ioa]['scale_factor'] = item.scale_factor  # Store scale factor for reference
+        IEC_SERVER.ioa_list[item.ioa]['value_type'] = value_type.__name__  # Store type name for reference
         await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
     else:
         await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
     
-    logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+    logger.info(f"Added telemetry: {item.name} with IOA {item.ioa} using {value_type.__name__}")
     await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
     return {"status": "success", "message": f"Added telemetry {item.name}"}
 
@@ -348,15 +361,29 @@ async def update_telemetry(sid, data):
             if 'auto_mode' in data:
                 telemetries[item_id].auto_mode = data['auto_mode']
                 logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
+                
             # Update value if provided
             if 'value' in data:
                 new_value = float(data['value'])
                 telemetries[item_id].value = new_value
-                scaled_value = int(round(new_value / item.scale_factor))
-                IEC_SERVER.update_ioa(ioa, scaled_value)
+                
+                # Get the value type from IOA list
+                value_type = IEC_SERVER.ioa_list.get(ioa, {}).get('type', MeasuredValueScaled)
+                
+                # Update based on value type
+                if value_type == MeasuredValueShort:
+                    # For MeasuredValueShort, use the actual value
+                    IEC_SERVER.update_ioa(ioa, new_value)
+                else:
+                    # For MeasuredValueScaled, scale the value
+                    scaled_value = int(round(new_value / item.scale_factor))
+                    IEC_SERVER.update_ioa(ioa, scaled_value)
+                    
                 logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
+                
             await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
             return {"status": "success"}
+    
     return {"status": "error", "message": "Telemetry not found"}
 
 @sio.event
@@ -422,16 +449,25 @@ async def import_data(sid, data):
         for tm in data.get("telemetries", []):
             item = TelemetryItem(**tm)
             telemetries[item.id] = item
-            scaled_value = int(item.value / item.scale_factor)
+            
+            # Determine type based on scale factor
+            if item.scale_factor >= 1:
+                value_type = MeasuredValueScaled
+                scaled_value = int(item.value / item.scale_factor)
+            else:
+                value_type = MeasuredValueShort
+                scaled_value = item.value
     
-            result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, scaled_value, None, True)
+            result = IEC_SERVER.add_ioa(item.ioa, value_type, scaled_value, None, True)
             if result == 0:
                 # Initialize with auto_mode disabled
                 IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
                 IEC_SERVER.ioa_list[item.ioa]['min_value'] = item.min_value
                 IEC_SERVER.ioa_list[item.ioa]['max_value'] = item.max_value
+                IEC_SERVER.ioa_list[item.ioa]['scale_factor'] = item.scale_factor
+                IEC_SERVER.ioa_list[item.ioa]['value_type'] = value_type.__name__
                 
-                logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+                logger.info(f"Added telemetry: {item.name} with IOA {item.ioa} using {value_type.__name__}")
             else:
                 await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
         
@@ -619,8 +655,18 @@ async def poll_ioa_values():
                 
                 # Update the telemetry object with the new value
                 telemetries[item_id].value = new_value
-                scaled_value = int(round(new_value / scale_factor))
-                IEC_SERVER.update_ioa(item.ioa, scaled_value)
+                
+                # Get the value type from IOA list
+                value_type = IEC_SERVER.ioa_list.get(item.ioa, {}).get('type', MeasuredValueScaled)
+                
+                # Update based on value type
+                if value_type == MeasuredValueShort:
+                    # For MeasuredValueShort, use the actual value
+                    IEC_SERVER.update_ioa(item.ioa, new_value)
+                else:
+                    # For MeasuredValueScaled, scale the value
+                    scaled_value = int(round(new_value / scale_factor))
+                    IEC_SERVER.update_ioa(item.ioa, scaled_value)
                 
                 logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
                 
