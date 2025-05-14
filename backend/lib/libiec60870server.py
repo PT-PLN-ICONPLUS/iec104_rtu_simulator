@@ -340,6 +340,7 @@ class IEC60870_5_104_server:
                     io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 elif self.ioa_list[ioa]['type'] == MeasuredValueShort:
                     self.ioa_list[ioa]['data'] = float(data)
+                    io = cast(MeasuredValueShort_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 else:
                     return -1
 
