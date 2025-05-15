@@ -115,7 +115,7 @@ export function ManageItemDialog({
     setValTelesignal("");
     setUnit("");
     setValTelemetry("");
-    setScaleFactor("");
+    setScaleFactor("1");
     setMinValue("");
     setMaxValue("");
     setErrors({});
@@ -167,8 +167,9 @@ export function ManageItemDialog({
       newErrors.address = "Address/IOA already in use";
     }
 
-    if (!interval || isNaN(Number(interval)) || Number(interval) <= 0) {
-      newErrors.interval = "Valid interval is required";
+    // Common validation for interval (for Telesignal and Telemetry)
+    if (itemType !== "Circuit Breaker" && (!interval || isNaN(Number(interval)) || Number(interval) <= 0)) {
+      newErrors.interval = "Valid interval is required (must be greater than 0)";
     }
 
     // Circuit breaker specific validations
@@ -516,11 +517,11 @@ export function ManageItemDialog({
                     >
                       <div className="flex flex-row gap-6">
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="1" id="on" />
+                          <RadioGroupItem value="1" id="telesignal-on" />
                           <Label htmlFor="on">ON</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="0" id="off" />
+                          <RadioGroupItem value="0" id="telesignal-off" />
                           <Label htmlFor="off">OFF</Label>
                         </div>
                       </div>
@@ -784,11 +785,11 @@ export function ManageItemDialog({
                       >
                         <div className="flex flex-row gap-6">
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="1" id="on" />
+                            <RadioGroupItem value="1" id="edit-telesignal-on" />
                             <Label htmlFor="on">ON</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="0" id="off" />
+                            <RadioGroupItem value="0" id="edit-telesignal-off" />
                             <Label htmlFor="off">OFF</Label>
                           </div>
                         </div>
