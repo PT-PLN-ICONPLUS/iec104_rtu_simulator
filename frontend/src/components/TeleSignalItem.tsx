@@ -38,6 +38,7 @@ function TeleSignal(item: TeleSignalItem & {
 
     if (!isAuto) {
       socket.emit('update_telesignal', {
+        id: item.id,
         ioa: item.ioa,
         value: newValue
       });
@@ -49,6 +50,7 @@ function TeleSignal(item: TeleSignalItem & {
     setAuto(newAutoMode);
 
     socket.emit('update_telesignal', {
+      id: item.id,
       ioa: item.ioa,
       auto_mode: newAutoMode,
     });

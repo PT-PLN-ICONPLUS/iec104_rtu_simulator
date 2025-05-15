@@ -43,6 +43,7 @@ function Telemetry(item: TelemetryItem & {
 
       // Send value update to backend
       socket.emit('update_telemetry', {
+        id: item.id,
         ioa: item.ioa,
         value: newValue
       });
@@ -65,6 +66,7 @@ function Telemetry(item: TelemetryItem & {
 
       // Send value update to backend
       socket.emit('update_telemetry', {
+        id: item.id,
         ioa: item.ioa,
         value: newValue
       });
@@ -79,6 +81,7 @@ function Telemetry(item: TelemetryItem & {
 
     // Send updated auto_mode to backend
     socket.emit('update_telemetry', {
+      id: item.id,
       ioa: item.ioa,
       auto_mode: newAutoMode
     });

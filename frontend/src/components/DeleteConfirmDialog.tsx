@@ -28,7 +28,7 @@ export function DeleteConfirmDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <p>Are you sure you want to delete item {itemName && <span className="font-semibold">{itemName}</span>}</p>
+          <p>Are you sure you want to delete {itemName && <span className="font-semibold">{itemName}</span>}?</p>
           <p className="text-red-500 mt-0.5">This action cannot be undone.</p>
         </div>
 

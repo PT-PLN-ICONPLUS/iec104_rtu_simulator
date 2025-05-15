@@ -294,6 +294,7 @@ export function ManageItemDialog({
         });
       } else if (itemType === "Telesignal") {
         onSubmit({
+          ...commonData,
           name,
           ioa: parseInt(address),
           interval: parseInt(interval),
@@ -301,6 +302,7 @@ export function ManageItemDialog({
         });
       } else if (itemType === "Telemetry") {
         onSubmit({
+          ...commonData,
           name,
           ioa: parseInt(address),
           unit,
@@ -509,8 +511,9 @@ export function ManageItemDialog({
 
                 {itemType === "Telesignal" && (
                   <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="value_telesignal" className="w-1/3">Value</Label>
+                    <Label htmlFor="value-telesignal" className="w-1/3">Value</Label>
                     <RadioGroup
+                      id="value-telesignal"
                       value={valTelesignal}
                       onValueChange={setValTelesignal}
                       defaultValue="0"
@@ -518,11 +521,11 @@ export function ManageItemDialog({
                       <div className="flex flex-row gap-6">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="1" id="telesignal-on" />
-                          <Label htmlFor="on">ON</Label>
+                          <Label htmlFor="telesignal-on">ON</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="0" id="telesignal-off" />
-                          <Label htmlFor="off">OFF</Label>
+                          <Label htmlFor="telesignal-off">OFF</Label>
                         </div>
                       </div>
                     </RadioGroup>
@@ -767,6 +770,7 @@ export function ManageItemDialog({
                     <div className="flex w-full items-center gap-1.5">
                       <Label htmlFor="value_telesignal" className="w-1/3">Value</Label>
                       <RadioGroup
+                        id="value_telesignal"
                         value={valTelesignal}
                         onValueChange={setValTelesignal}
                         defaultValue="0"
@@ -774,11 +778,11 @@ export function ManageItemDialog({
                         <div className="flex flex-row gap-6">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="1" id="edit-telesignal-on" />
-                            <Label htmlFor="on">ON</Label>
+                            <Label htmlFor="edit-telesignal-on">ON</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="0" id="edit-telesignal-off" />
-                            <Label htmlFor="off">OFF</Label>
+                            <Label htmlFor="edit-telesignal-off">OFF</Label>
                           </div>
                         </div>
                       </RadioGroup>

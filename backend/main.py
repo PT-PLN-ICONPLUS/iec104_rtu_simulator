@@ -183,50 +183,29 @@ async def add_circuit_breaker(sid, data):
 @sio.event
 async def update_circuit_breaker(sid, data):
     id = data.get('id')
-    # Find the item by IOA
+    # Find the item by ID
     for item_id, item in list(circuit_breakers.items()):
         if id == item_id:
-            # Update remote status if provided
-            if 'remote' in data:
-                circuit_breakers[item_id].remote = data['remote']
-                IEC_SERVER.update_ioa(item.ioa_local_remote, data['remote'])
-                
-            # Update value if provided
-            if 'cb_status_open' in data:
-                circuit_breakers[item_id].cb_status_open = data['cb_status_open']
-                IEC_SERVER.update_ioa(item.ioa_cb_status, data['cb_status_open'])
-                
-            if 'cb_status_close' in data:
-                circuit_breakers[item_id].cb_status_close = data['cb_status_close']
-                IEC_SERVER.update_ioa(item.ioa_cb_status_close, data['cb_status_close'])
-                
-            if 'cb_status_dp' in data:
-                circuit_breakers[item_id].cb_status_dp = data['cb_status_dp']
-                IEC_SERVER.update_ioa(item.ioa_cb_status_dp, data['cb_status_dp'])
-                
-            if 'control_open' in data:
-                circuit_breakers[item_id].control_open = data['control_open']
-                IEC_SERVER.update_ioa(item.ioa_control_open, data['control_open'])
-                
-            if 'control_close' in data:
-                circuit_breakers[item_id].control_close = data['control_close']
-                IEC_SERVER.update_ioa(item.ioa_control_close, data['control_close'])
-                
-            if 'control_dp' in data:
-                circuit_breakers[item_id].control_dp = data['control_dp']
-                IEC_SERVER.update_ioa(item.ioa_control_dp, data['control_dp'])
-                
-            # Handle SBO mode update if provided
-            if 'is_sbo' in data:
-                circuit_breakers[item_id].is_sbo = data['is_sbo']
-                
-            # Handle double point mode update if provided
-            if 'is_double_point' in data:
-                circuit_breakers[item_id].is_double_point = data['is_double_point']
-            
-            # Handle SDP mode (Single control, Double status) update if provided
-            if 'is_sdp_mode' in data:
-                circuit_breakers[item_id].is_sdp_mode = data['is_sdp_mode']
+            # Update all fields that are provided in the data
+            for key, value in data.items():
+                if hasattr(circuit_breakers[item_id], key) and key != 'id':
+                    setattr(circuit_breakers[item_id], key, value)
+                    
+                    # Update IEC server if this is an IOA-related field
+                    if key == 'remote':
+                        IEC_SERVER.update_ioa(item.ioa_local_remote, value)
+                    elif key == 'cb_status_open':
+                        IEC_SERVER.update_ioa(item.ioa_cb_status, value)
+                    elif key == 'cb_status_close':
+                        IEC_SERVER.update_ioa(item.ioa_cb_status_close, value)
+                    elif key == 'cb_status_dp':
+                        IEC_SERVER.update_ioa(item.ioa_cb_status_dp, value)
+                    elif key == 'control_open':
+                        IEC_SERVER.update_ioa(item.ioa_control_open, value)
+                    elif key == 'control_close':
+                        IEC_SERVER.update_ioa(item.ioa_control_close, value)
+                    elif key == 'control_dp':
+                        IEC_SERVER.update_ioa(item.ioa_control_dp, value)
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -276,23 +255,43 @@ async def add_telesignal(sid, data):
 
 @sio.event
 async def update_telesignal(sid, data):
-    ioa = int(data['ioa'])
-    
-    # Find the item by IOA
+    id = data.get('id')
+    # Find the item by ID
     for item_id, item in list(telesignals.items()):
-        if item.ioa == ioa:
-            # Update auto_mode if provided
-            if 'auto_mode' in data:
-                telesignals[item_id].auto_mode = data['auto_mode']
-                logger.info(f"Telesignal set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
+        if id == item_id:
+            # Check if IOA is being updated
+            old_ioa = item.ioa
+            new_ioa = data.get('ioa')
             
-            # Update value if provided
-            if 'value' in data:
-                new_value = data['value']
-                telesignals[item_id].value = new_value
-                result = IEC_SERVER.update_ioa(ioa, new_value)
-                logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
+            # Handle IOA update if needed
+            if new_ioa is not None and old_ioa != new_ioa:
+                # Remove old IOA
+                IEC_SERVER.remove_ioa(old_ioa)
+                
+                # Add new IOA
+                callback = lambda ioa, ioa_object, server, is_select=None: (
+                    server.update_ioa_from_server(ioa, ioa_object['data']) 
+                    if not is_select else True
+                )
+                
+                result = IEC_SERVER.add_ioa(new_ioa, SinglePointInformation, item.value, callback, True)
+                if result != 0:
+                    await sio.emit('error', {'message': f'Failed to update telesignal IOA to {new_ioa}'})
+                    return {"status": "error", "message": f"Failed to update IOA to {new_ioa}"}
+                
+                # Update auto_mode for new IOA
+                IEC_SERVER.ioa_list[new_ioa]['auto_mode'] = item.auto_mode
             
+            # Update all fields that are provided in the data
+            for key, value in data.items():
+                if hasattr(telesignals[item_id], key) and key != 'id':
+                    setattr(telesignals[item_id], key, value)
+                    
+                    # Update IEC server for the IOA value
+                    if key == 'value':
+                        IEC_SERVER.update_ioa(item.ioa, value)
+            
+            logger.info(f"Updated telesignal: {item.name}, data: {telesignals[item_id].model_dump()}")
             await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             return {"status": "success"}
     
@@ -354,37 +353,72 @@ async def add_telemetry(sid, data):
 
 @sio.event
 async def update_telemetry(sid, data):
-    ioa = int(data['ioa'])
-    for item_id, item in list(telemetries.items()):
-        if item.ioa == ioa:
-            # Update auto_mode if provided
-            if 'auto_mode' in data:
-                telemetries[item_id].auto_mode = data['auto_mode']
-                logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
+    id = data.get('id')
+    # If we have an ID, update by ID
+    if id:
+        for item_id, item in list(telemetries.items()):
+            if id == item_id:
+                # Check if IOA is being updated
+                old_ioa = item.ioa
+                new_ioa = data.get('ioa')
                 
-            # Update value if provided
-            if 'value' in data:
-                new_value = float(data['value'])
-                telemetries[item_id].value = new_value
-                
-                # Get the value type from IOA list
-                value_type = IEC_SERVER.ioa_list.get(ioa, {}).get('type', MeasuredValueScaled)
-                
-                # Update based on value type
-                if value_type == MeasuredValueShort:
-                    # For MeasuredValueShort, use the actual value
-                    IEC_SERVER.update_ioa(ioa, new_value)
-                else:
-                    # For MeasuredValueScaled, scale the value
-                    scaled_value = int(round(new_value / item.scale_factor))
-                    IEC_SERVER.update_ioa(ioa, scaled_value)
+                # Handle IOA update if needed
+                if new_ioa is not None and old_ioa != new_ioa:
+                    # Remove old IOA
+                    IEC_SERVER.remove_ioa(old_ioa)
                     
-                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
+                    # Determine type based on scale factor
+                    scale_factor = data.get('scale_factor', item.scale_factor)
+                    if scale_factor >= 1:
+                        # Use MeasuredValueScaled for integer or larger scale factors
+                        value_type = MeasuredValueScaled
+                        # Scale value as needed for integer representation
+                        scaled_value = int(item.value / scale_factor)
+                    else:
+                        # Use MeasuredValueShort for decimal scale factors for better precision
+                        value_type = MeasuredValueShort
+                        # Use actual value for MeasuredValueShort (float)
+                        scaled_value = item.value
+                    
+                    # Add new IOA
+                    callback = lambda ioa, ioa_object, server, is_select=None: (
+                        server.update_ioa_from_server(ioa, ioa_object['data']) 
+                        if not is_select else True
+                    )
+                    
+                    result = IEC_SERVER.add_ioa(new_ioa, value_type, scaled_value, callback, True)
+                    if result != 0:
+                        await sio.emit('error', {'message': f'Failed to update telemetry IOA to {new_ioa}'})
+                        return {"status": "error", "message": f"Failed to update IOA to {new_ioa}"}
+                    
+                    # Update auto_mode and other metadata for new IOA
+                    IEC_SERVER.ioa_list[new_ioa]['auto_mode'] = item.auto_mode
+                    IEC_SERVER.ioa_list[new_ioa]['min_value'] = item.min_value
+                    IEC_SERVER.ioa_list[new_ioa]['max_value'] = item.max_value
+                    IEC_SERVER.ioa_list[new_ioa]['scale_factor'] = scale_factor
+                    IEC_SERVER.ioa_list[new_ioa]['value_type'] = value_type.__name__
                 
-            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
-            return {"status": "success"}
-    
-    return {"status": "error", "message": "Telemetry not found"}
+                # Update all fields that are provided in the data
+                for key, value in data.items():
+                    if hasattr(telemetries[item_id], key) and key != 'id':
+                        setattr(telemetries[item_id], key, value)
+                        
+                        # Update IEC server for the IOA value
+                        if key == 'value':
+                            # Get the value type from IOA list
+                            value_type = IEC_SERVER.ioa_list.get(item.ioa, {}).get('type', MeasuredValueScaled)
+                            
+                            # Update based on value type
+                            if value_type == MeasuredValueShort:
+                                IEC_SERVER.update_ioa(item.ioa, value)
+                            else:
+                                # For MeasuredValueScaled, scale the value
+                                scaled_value = int(round(value / item.scale_factor))
+                                IEC_SERVER.update_ioa(item.ioa, scaled_value)
+                
+                logger.info(f"Updated telemetry: {item.name}, data: {telemetries[item_id].model_dump()}")
+                await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+                return {"status": "success"}
 
 @sio.event
 async def remove_telemetry(sid, data):
@@ -549,7 +583,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["cb_status"] = server_value
                         circuit_breakers[cb_id].cb_status_open = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} status open: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} status open: {server_value}")
                 
                 if cb.ioa_cb_status_close in IEC_SERVER.ioa_list:
                     server_value = IEC_SERVER.ioa_list[cb.ioa_cb_status_close]['data']
@@ -557,7 +591,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["cb_status_close"] = server_value
                         circuit_breakers[cb_id].cb_status_close = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} status close: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} status close: {server_value}")
                 
                 # Check if double point status value changed
                 if cb.is_double_point and cb.ioa_cb_status_dp and cb.ioa_cb_status_dp in IEC_SERVER.ioa_list:
@@ -566,7 +600,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["cb_status_dp"] = server_value
                         circuit_breakers[cb_id].cb_status_dp = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} status DP: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} status DP: {server_value}")
                 
                 # Check if control values changed
                 if cb.ioa_control_open in IEC_SERVER.ioa_list:
@@ -575,7 +609,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["control_open"] = server_value
                         circuit_breakers[cb_id].control_open = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} control open: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} control open: {server_value}")
                 
                 if cb.ioa_control_close in IEC_SERVER.ioa_list:
                     server_value = IEC_SERVER.ioa_list[cb.ioa_control_close]['data']
@@ -583,7 +617,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["control_close"] = server_value
                         circuit_breakers[cb_id].control_close = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} control close: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} control close: {server_value}")
                 
                 if cb.is_double_point and cb.ioa_control_dp and cb.ioa_control_dp in IEC_SERVER.ioa_list:
                     server_value = IEC_SERVER.ioa_list[cb.ioa_control_dp]['data']
@@ -591,7 +625,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["control_dp"] = server_value
                         circuit_breakers[cb_id].control_dp = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} control DP: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} control DP: {server_value}")
                 
                 # Check if remote value changed
                 if cb.ioa_local_remote in IEC_SERVER.ioa_list:
@@ -600,7 +634,7 @@ async def monitor_circuit_breaker_changes():
                         previous_values[cb_id]["remote"] = server_value
                         circuit_breakers[cb_id].remote = server_value
                         cb_changed = True
-                        logger.info(f"External change detected for CB {cb.name} remote: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} remote: {server_value}")
                 
                 if cb_changed:
                     changes_detected = True

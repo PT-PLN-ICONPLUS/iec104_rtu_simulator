@@ -177,11 +177,15 @@ function App() {
 
   const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
     if ('ioa_cb_status' in data) {
+      console.log("CB!");
+      console.log(data);
       // Update circuit breaker - find the original item first
       const originalItem = circuitBreakers.find(item => item.id === data.id);
       if (originalItem) {
         // Merge the original item with the updated data
         const updatedItem = { ...originalItem, ...data };
+
+        console.log(updatedItem);
 
         // Send the complete updated item to the server
         socket.emit('update_circuit_breaker', updatedItem);
@@ -192,11 +196,15 @@ function App() {
         ));
       }
     } else if ('ioa' in data && !('unit' in data)) {
+      console.log("TELESIGNAL!");
+      console.log(data);
       // Update telesignal - find the original item first
       const originalItem = teleSignals.find(item => item.id === data.id);
       if (originalItem) {
         // Merge the original item with the updated data
         const updatedItem = { ...originalItem, ...data };
+
+        console.log(updatedItem);
 
         // Send the complete updated item to the server
         socket.emit('update_telesignal', updatedItem);
@@ -207,11 +215,15 @@ function App() {
         ));
       }
     } else if ('ioa' in data && 'unit' in data) {
+      console.log("TELEMETRY!");
+      console.log(data);
       // Update telemetry - find the original item first
       const originalItem = teleMetries.find(item => item.id === data.id);
       if (originalItem) {
         // Merge the original item with the updated data
         const updatedItem = { ...originalItem, ...data };
+
+        console.log(updatedItem);
 
         // Send the complete updated item to the server
         socket.emit('update_telemetry', updatedItem);
