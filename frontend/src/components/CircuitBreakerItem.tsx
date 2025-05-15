@@ -30,7 +30,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
     const handleUpdate = (data: CircuitBreakerItem[]) => {
       // Filter the data to find the specific item based on id
       const filtered = data.filter((look: CircuitBreakerItem) => look.id === item.id);
-      if (filtered[0].id === item.id) {
+      if (filtered.length > 0 && filtered[0].id === item.id) {
         setCbStatusOpen(filtered[0].cb_status_open);
         setCbStatusClose(filtered[0].cb_status_close);
         setCbStatusDP(filtered[0].cb_status_dp);

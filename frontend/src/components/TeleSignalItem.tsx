@@ -18,7 +18,7 @@ function TeleSignal(item: TeleSignalItem & {
       // Filter the data to find the specific item based on ioa
       const filtered = data.filter((look: TeleSignalItem) => look.ioa === item.ioa);
 
-      if (filtered[0].ioa === item.ioa) {
+      if (filtered.length > 0 && filtered[0].ioa === item.ioa) {
         setIsOn(filtered[0].value === 1);
         setAuto(filtered[0].auto_mode);
       }

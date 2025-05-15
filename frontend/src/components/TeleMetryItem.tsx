@@ -18,7 +18,7 @@ function Telemetry(item: TelemetryItem & {
       // Filter the data to find the specific item based on ioa
       const filtered = data.filter((look: TelemetryItem) => look.ioa === item.ioa);
 
-      if (filtered[0].ioa === item.ioa) {
+      if (filtered.length > 0 && filtered[0].ioa === item.ioa) {
         setValue(filtered[0].value);
         setAuto(filtered[0].auto_mode);
       }
