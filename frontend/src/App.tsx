@@ -569,7 +569,6 @@ function App() {
         isOpen={deleteDialogOpen}
         onClose={cancelDelete}
         onConfirm={confirmDelete}
-        itemType={itemToDelete?.type || ""}
         itemName={getItemToDeleteName()}
       />
     </div>

@@ -11,7 +11,6 @@ type DeleteConfirmDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  itemType: string;
   itemName?: string;
 };
 
@@ -19,7 +18,6 @@ export function DeleteConfirmDialog({
   isOpen,
   onClose,
   onConfirm,
-  itemType,
   itemName,
 }: DeleteConfirmDialogProps) {
   return (
@@ -30,9 +28,8 @@ export function DeleteConfirmDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <p>Are you sure you want to delete this {itemType}?</p>
-          {itemName && <p className="font-semibold">{itemName}</p>}
-          <p className="text-red-500 mt-2">This action cannot be undone.</p>
+          <p>Are you sure you want to delete item {itemName && <span className="font-semibold">{itemName}</span>}</p>
+          <p className="text-red-500 mt-0.5">This action cannot be undone.</p>
         </div>
 
         <DialogFooter>

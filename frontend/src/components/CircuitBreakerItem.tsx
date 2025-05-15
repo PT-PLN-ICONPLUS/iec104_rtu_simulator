@@ -292,7 +292,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               onClick={() => handleOpen()}
               className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-green-600 border-2 border-black ${isRemote ? 'opacity-50' : ''
                 }`}
-              disabled={isRemote}
+              disabled={isRemote || item.isEditing}
             >
               Open
             </Button>
@@ -301,7 +301,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               onClick={() => handleClose()}
               className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-red-600 border-2 border-black ${isRemote ? 'opacity-50' : ''
                 }`}
-              disabled={isRemote}
+              disabled={isRemote || item.isEditing}
             >
               Close
             </Button>
@@ -314,7 +314,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDPMode || isRemote) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={!isDPMode || isRemote}
+              disabled={!isDPMode || isRemote || item.isEditing}
               onClick={() => isDPMode && handleInvalid(0)} // Set to invalid 0
             >
               Invalid 0
@@ -324,7 +324,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(item.remote == 1 || item.cb_status_dp === 0 || item.cb_status_dp === 3) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={item.remote == 1 || item.cb_status_dp === 0 || item.cb_status_dp === 3}
+              disabled={item.remote == 1 || item.cb_status_dp === 0 || item.cb_status_dp === 3 || item.isEditing}
               onClick={() => isDPMode && handleTrip()} // Trip
             >
               Trip
@@ -334,7 +334,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDPMode || item.remote == 1) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-              disabled={!isDPMode || item.remote == 1}
+              disabled={!isDPMode || item.remote == 1 || item.isEditing}
               onClick={() => isDPMode && handleInvalid(3)} // Set to invalid 3
             >
               Invalid 3
@@ -428,6 +428,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               id={`location-mode-${item.id}`}
               checked={isRemote}
               onCheckedChange={toggleLocalRemote}
+              disabled={item.isEditing}
             />
             <span className={`font-bold ${isRemote ? 'text-red-500' : ''}`}>Remote</span>
           </div>
