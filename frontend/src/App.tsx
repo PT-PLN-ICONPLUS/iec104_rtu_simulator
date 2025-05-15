@@ -396,6 +396,7 @@ function App() {
                 <Button
                   className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
                   onClick={openAddDialog}
+                  disabled={isDragging || isEditing}
                 >
                   <MdAdd />
                 </Button>
@@ -410,8 +411,9 @@ function App() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isEditing ? 'bg-blue-100' : ''}`}
+                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isEditing ? 'bg-blue-400' : ''}`}
                   onClick={handleEditClick}
+                  disabled={isDragging}
                 >
                   {isEditing ? <MdOutlineCheck /> : <MdOutlineModeEditOutline />}
                 </Button>
@@ -426,8 +428,9 @@ function App() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isEditing ? 'bg-blue-100' : ''}`}
+                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isDragging ? 'bg-blue-400' : ''}`}
                   onClick={handleDragNDropClick}
+                  disabled={isEditing}
                 >
                   {isDragging ? <MdOutlineCheck /> : <TbDragDrop />}
                 </Button>
@@ -444,6 +447,7 @@ function App() {
                 <Button
                   className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
                   onClick={exportData}
+                  disabled={isEditing || isDragging}
                 >
                   <PiExportBold />
                 </Button>
@@ -471,6 +475,7 @@ function App() {
                     };
                     input.click();
                   }}
+                  disabled={isEditing || isDragging}
                 >
                   <CgImport />
                 </Button>
