@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+// import { GripVertical } from 'lucide-react';
 
 interface SortableItemProps {
   id: string;
@@ -10,8 +10,8 @@ interface SortableItemProps {
 
 export function SortableItem({ id, children }: SortableItemProps) {
   const {
-    attributes,
-    listeners,
+    // attributes,
+    // listeners,
     setNodeRef,
     transform,
     transition,
@@ -27,14 +27,14 @@ export function SortableItem({ id, children }: SortableItemProps) {
 
   return (
     <div ref={setNodeRef} style={style} className="sortable-item">
-      <div
+      {/* <div
         className="drag-handle"
         {...attributes}
         {...listeners}
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical size={16} />
-      </div>
+      </div> */}
       {children}
     </div>
   );

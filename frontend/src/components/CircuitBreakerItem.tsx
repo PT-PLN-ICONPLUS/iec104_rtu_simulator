@@ -252,7 +252,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
 
   const getModeText = () => {
     if (isDPMode && isSDPMode) return "Double Status, Single Controls";
-    if (isDPMode) return "Double Status & Control";
+    if (isDPMode) return "Double Status & Controls";
     return "Single Status & Controls";
   };
 

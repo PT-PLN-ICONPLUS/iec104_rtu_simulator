@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ type ManageItemDialogProps = {
   onClose: () => void;
   title: string;
   action: "add" | "remove";
-  itemType: string;
   items?: Item[];
   onSubmit: (data: any) => void;
 };
@@ -27,17 +25,16 @@ type ManageItemDialogProps = {
 export function ManageItemDialog({
   isOpen,
   onClose,
-  title,
   action,
-  itemType,
   items = [],
   onSubmit,
 }: ManageItemDialogProps) {
   // Common fields
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [interval, setInterval] = useState("5");
+  const [interval, setInterval] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
+  const [itemType, setItemType] = useState("");
 
   // Circuit breaker fields
   const [ioaControlOpen, setIOAControlOpen] = useState("");
@@ -117,13 +114,13 @@ export function ManageItemDialog({
       newErrors.address = "Address/IOA must be a number";
     } else if (
       action === "add" &&
-      itemType === "Circuit Breakers" &&
+      itemType === "Circuit Breaker" &&
       items.some((item: any) => item.ioa_cb_status === Number(address))
     ) {
       newErrors.address = "Address/IOA already in use";
     } else if (
       action === "add" &&
-      itemType === "Telesignals" &&
+      itemType === "Telesignal" &&
       items.some((item: any) => item.ioa === Number(address))
     ) {
       newErrors.address = "Address/IOA already in use";
@@ -140,7 +137,7 @@ export function ManageItemDialog({
     }
 
     // Circuit breaker specific validations
-    if (itemType === "Circuit Breakers") {
+    if (itemType === "Circuit Breaker") {
       if (!ioaControlOpen) {
         newErrors.ioaControlOpen = "IOA Control Open is required";
       } else if (isNaN(Number(ioaControlOpen))) {
@@ -243,7 +240,7 @@ export function ManageItemDialog({
     }
 
     if (action === "add") {
-      if (itemType === "Circuit Breakers") {
+      if (itemType === "Circuit Breaker") {
         const isDP = isDoublePoint === "true";
         onSubmit({
           name,
@@ -258,7 +255,7 @@ export function ManageItemDialog({
           remote: 0,  // Default to local mode
           interval: parseInt(interval),
         });
-      } else if (itemType === "Telesignals") {
+      } else if (itemType === "Telesignal") {
         onSubmit({
           name,
           ioa: parseInt(address),
@@ -291,27 +288,60 @@ export function ManageItemDialog({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            Add new item
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {action === "add" ? (
               <>
                 <div className="flex w-full items-center gap-1.5">
-                  <Label htmlFor="name" className="w-1/3">Name</Label>
-                  <input
-                    type="text"
-                    id="name"
-                    className={`w-2/3 border rounded p-2 ${errors.name ? "border-red-500" : ""}`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+                  <Label htmlFor="item-type" className="w-1/3">Item Type</Label>
+                  <select
+                    id="item-type"
+                    className={`border rounded p-2 w-2/3 ${errors.itemType ? "border-red-500" : ""}`}
+                    value={itemType}
+                    onChange={(e) => setItemType(e.target.value)}
+                  >
+                    <option value="">Choose</option>
+                    <option value="Circuit Breaker">Circuit Breaker</option>
+                    <option value="Telesignal">Telesignal</option>
+                    <option value="Telemetry">Telemetry</option>
+                  </select>
+                  {errors.itemType && <p className="text-red-500 text-xs">{errors.itemType}</p>}
                 </div>
 
-                {itemType !== "Circuit Breakers" && (
+                {itemType && (
                   <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="interval" className="w-1/3">Interval (s)</Label>
+                    <Label htmlFor="name" className="w-1/3">Name</Label>
+                    <input
+                      type="text"
+                      id="name"
+                      className={`border rounded p-2 w-2/3 ${errors.name ? "border-red-500" : ""}`}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                    {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+                  </div>
+                )}
+
+                {itemType && (
+                  <div className="flex w-full items-center gap-1.5">
+                    <Label htmlFor="address" className="w-1/3">{itemType == "Circuit Breaker" ? "IOA CB Status Open" : "IOA"}</Label>
+                    <input
+                      type="number"
+                      id="address"
+                      className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                    />
+                    {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
+                  </div>
+                )}
+
+                {/* if item type not selected or cb then hide */}
+                {itemType && itemType !== "Circuit Breaker" && (
+                  <div className="flex w-full items-center gap-1.5">
+                    <Label htmlFor="interval" className="w-1/3">Interval</Label>
                     <input
                       type="number"
                       id="interval"
@@ -323,21 +353,7 @@ export function ManageItemDialog({
                   </div>
                 )}
 
-                <div className="flex w-full items-center gap-1.5">
-                  <Label htmlFor="address" className="w-1/3">
-                    {itemType === "Circuit Breakers" ? "IOA CB Status Open" : "Address/IOA"}
-                  </Label>
-                  <input
-                    type="number"
-                    id="address"
-                    className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                  {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-                </div>
-
-                {itemType === "Circuit Breakers" && (
+                {itemType === "Circuit Breaker" && (
                   <>
                     <div className="flex w-full items-center gap-1.5">
                       <Label htmlFor="ioaCbStatusClose" className="w-1/3">
@@ -386,7 +402,7 @@ export function ManageItemDialog({
                       <RadioGroup
                         value={isDoublePoint}
                         onValueChange={setIsDoublePoint}
-                        defaultValue="false"
+                        defaultValue="true"
                       >
                         <div className="flex flex-row gap-6">
                           <div className="flex items-center space-x-2">
@@ -443,7 +459,7 @@ export function ManageItemDialog({
                   </>
                 )}
 
-                {itemType === "Telesignals" && (
+                {itemType === "Telesignal" && (
                   <div className="flex w-full items-center gap-1.5">
                     <Label htmlFor="value_telesignal" className="w-1/3">Value</Label>
                     <RadioGroup
@@ -558,7 +574,11 @@ export function ManageItemDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" variant={action === "add" ? "default" : "destructive"}>
+              <Button
+                type="submit"
+                variant={action === "add" ? "default" : "destructive"}
+                disabled={action === "add" && !itemType}
+              >
                 {action === "add" ? "Add" : "Remove"}
               </Button>
             </DialogFooter>

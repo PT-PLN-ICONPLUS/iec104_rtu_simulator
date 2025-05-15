@@ -1,7 +1,6 @@
 // frontend/src/App.tsx
 import { useState, useEffect } from 'react';
 import socket from './socket';
-import { SectionTitle } from './components/SectionTitleItem';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
@@ -10,11 +9,21 @@ import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from './components/SortableItem';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
+import { Button } from './components/ui/button';
+
+import { MdAdd, MdOutlineModeEditOutline, MdOutlineCheck } from "react-icons/md";
+import { CgImport } from "react-icons/cg";
+import { PiExportBold } from "react-icons/pi";
+import { ManageItemDialog } from './components/ManageItemDialog';
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
   const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   useEffect(() => {
     // Emit 'get_initial_data' to request initial data
@@ -71,6 +80,20 @@ function App() {
     };
   }, []);
 
+  const handleEditClick = () => {
+    setIsEditing(!isEditing);
+  };
+
+  const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+    if ('ioa_cb_status' in data) {
+      addCircuitBreaker(data as CircuitBreakerItem);
+    } else if ('ioa' in data && !('unit' in data)) {
+      addTeleSignal(data as TeleSignalItem);
+    } else if ('ioa' in data && 'unit' in data) {
+      addTelemetry(data as TelemetryItem);
+    }
+  };
+
   const addCircuitBreaker = (data: CircuitBreakerItem) => {
     const newItem: CircuitBreakerItem = {
       id: Date.now().toString(),
@@ -103,14 +126,14 @@ function App() {
     }
   };
 
-  const removeCircuitBreaker = (data: { id: string }) => {
-    // Send to backend instead of just updating local state
-    if (socket) {
-      socket.emit('remove_circuit_breaker', data, (response: unknown) => {
-        console.log('Remove circuit breaker response:', response);
-      });
-    }
-  };
+  // const removeCircuitBreaker = (data: { id: string }) => {
+  //   // Send to backend instead of just updating local state
+  //   if (socket) {
+  //     socket.emit('remove_circuit_breaker', data, (response: unknown) => {
+  //       console.log('Remove circuit breaker response:', response);
+  //     });
+  //   }
+  // };
 
   const addTeleSignal = (data: TeleSignalItem) => {
     const newItem: TeleSignalItem = {
@@ -131,13 +154,13 @@ function App() {
     }
   };
 
-  const removeTeleSignal = (data: { id: string }) => {
-    if (socket) {
-      socket.emit('remove_telesignal', data, (response: unknown) => {
-        console.log('Remove tele signal response:', response);
-      });
-    }
-  };
+  // const removeTeleSignal = (data: { id: string }) => {
+  //   if (socket) {
+  //     socket.emit('remove_telesignal', data, (response: unknown) => {
+  //       console.log('Remove tele signal response:', response);
+  //     });
+  //   }
+  // };
 
   const addTelemetry = (data: TelemetryItem) => {
     const newItem: TelemetryItem = {
@@ -160,13 +183,13 @@ function App() {
     }
   };
 
-  const removeTelemetry = (data: { id: string }) => {
-    if (socket) {
-      socket.emit('remove_telemetry', data, (response: unknown) => {
-        console.log('Remove telemetry response:', response);
-      });
-    }
-  };
+  // const removeTelemetry = (data: { id: string }) => {
+  //   if (socket) {
+  //     socket.emit('remove_telemetry', data, (response: unknown) => {
+  //       console.log('Remove telemetry response:', response);
+  //     });
+  //   }
+  // };
 
   const exportData = () => {
     socket.emit('export_data');
@@ -289,38 +312,89 @@ function App() {
           <p className="text-2xl font-bold">IEC104 Server Simulator</p>
         </div>
         <div className="flex space-x-2">
-          <button
-            onClick={exportData}
-            className="bg-blue-500 text-white px-2 py-1  rounded border border-black hover:bg-blue-600"
-          >
-            Export
-          </button>
-          <label
-            htmlFor="import-file"
-            className="bg-green-500 text-white px-2 py-1 rounded border border-black hover:bg-green-600 cursor-pointer"
-          >
-            Import
-          </label>
-          <input
-            id="import-file"
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={(e) => e.target.files && importData(e.target.files[0])}
-          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
+                  onClick={() => setAddDialogOpen(true)}
+                >
+                  <MdAdd />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add new component</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
+                  onClick={handleEditClick}
+                >
+                  {isEditing ? <MdOutlineCheck /> : <MdOutlineModeEditOutline />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isEditing ? 'Done' : 'Edit'} mode</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
+                  onClick={exportData}
+                >
+                  <PiExportBold />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Export data</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json';
+                    input.onchange = (event) => {
+                      const file = (event.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        importData(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  <CgImport />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Import data</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
         </div>
       </div>
 
       <div className="flex flex-row w-full">
         {/* Circuit Breaker Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
-          {/* Header Circuit Breaker Section */}
-          <SectionTitle
-            title="Circuit Breakers"
-            onAdd={data => addCircuitBreaker(data as CircuitBreakerItem)}
-            onRemove={removeCircuitBreaker}
-            items={circuitBreakers}
-          />
+          <div className="flex flex-row border-b-2 justify-center">
+            <h2 className="text-xl font-semibold m-2">Circuit Breakers</h2>
+          </div>
           <div className="flex-1 overflow-y-auto">
             <DndContext
               collisionDetection={closestCenter}
@@ -366,12 +440,9 @@ function App() {
 
         {/* Telesignal Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
-          <SectionTitle
-            title="Telesignals"
-            onAdd={data => addTeleSignal(data as TeleSignalItem)}
-            onRemove={removeTeleSignal}
-            items={teleSignals}
-          />
+          <div className="flex flex-row border-b-2 justify-center">
+            <h2 className="text-xl font-semibold m-2">Telesignals</h2>
+          </div>
           <div className="flex-1 overflow-y-auto">
             <DndContext
               collisionDetection={closestCenter}
@@ -403,12 +474,9 @@ function App() {
 
         {/* Telemetry Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
-          <SectionTitle
-            title="Telemetry"
-            onAdd={data => addTelemetry(data as TelemetryItem)}
-            onRemove={removeTelemetry}
-            items={teleMetries}
-          />
+          <div className="flex flex-row border-b-2 justify-center">
+            <h2 className="text-xl font-semibold m-2">Telemetries</h2>
+          </div>
           <div className="flex-1 overflow-y-auto">
             <DndContext
               collisionDetection={closestCenter}
@@ -440,6 +508,14 @@ function App() {
           </div>
         </div>
       </div>
+
+      <ManageItemDialog
+        isOpen={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        title={`Add New Component`}
+        action="add"
+        onSubmit={addComponent}
+      />
     </div>
   );
 }
