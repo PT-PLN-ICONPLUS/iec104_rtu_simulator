@@ -15,6 +15,7 @@ import { MdAdd, MdOutlineModeEditOutline, MdOutlineCheck } from "react-icons/md"
 import { CgImport } from "react-icons/cg";
 import { PiExportBold } from "react-icons/pi";
 import { ManageItemDialog } from './components/ManageItemDialog';
+import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
@@ -25,6 +26,9 @@ function App() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | null>(null);
   const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' } | null>(null);
 
   useEffect(() => {
     // Emit 'get_initial_data' to request initial data
@@ -117,19 +121,42 @@ function App() {
   };
 
   const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
-    // Confirm deletion
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      if (type === 'circuit_breaker') {
-        socket.emit('delete_circuit_breaker', { id });
-        setCircuitBreakers(prev => prev.filter(item => item.id !== id));
-      } else if (type === 'telesignal') {
-        socket.emit('delete_telesignal', { id });
-        setTeleSignals(prev => prev.filter(item => item.id !== id));
+    // Set up the delete dialog with the item's data
+    setItemToDelete({ id, type });
+    setDeleteDialogOpen(true);
+  };
+
+  const getItemToDeleteName = () => {
+    if (!itemToDelete) return "";
+
+    if (itemToDelete.type === 'circuit_breaker') {
+      return circuitBreakers.find(item => item.id === itemToDelete.id)?.name || "";
+    } else if (itemToDelete.type === 'telesignal') {
+      return teleSignals.find(item => item.id === itemToDelete.id)?.name || "";
+    } else {
+      return teleMetries.find(item => item.id === itemToDelete.id)?.name || "";
+    }
+  };
+
+  // Add this new function to handle the actual deletion
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      if (itemToDelete.type === 'circuit_breaker') {
+        socket.emit('remove_circuit_breaker', { id: itemToDelete.id });
+      } else if (itemToDelete.type === 'telesignal') {
+        socket.emit('remove_telesignal', { id: itemToDelete.id });
       } else {
-        socket.emit('delete_telemetry', { id });
-        setTeleMetries(prev => prev.filter(item => item.id !== id));
+        socket.emit('remove_telemetry', { id: itemToDelete.id });
       }
     }
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+  };
+
+  // Add this function to close the delete dialog without deleting
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
   };
 
   const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
@@ -368,7 +395,7 @@ function App() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Add new component</p>
+                <p>Add New Item</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -383,7 +410,7 @@ function App() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isEditing ? 'Done' : 'Edit'} mode</p>
+                <p>{isEditing ? 'Done Editing' : 'Edit Mode'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -399,7 +426,7 @@ function App() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Export data</p>
+                <p>Export Data</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -426,7 +453,7 @@ function App() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Import data</p>
+                <p>Import Data</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -536,6 +563,14 @@ function App() {
             selectedItemType === 'telemetry' ? teleMetries : []}
         itemToEdit={selectedItemToEdit}
         onSubmit={selectedItemToEdit ? updateComponent : addComponent}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        itemType={itemToDelete?.type || ""}
+        itemName={getItemToDeleteName()}
       />
     </div>
   );
