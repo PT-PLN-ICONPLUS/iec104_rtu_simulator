@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import { useState, useEffect } from 'react';
 import socket from './socket';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
@@ -24,6 +23,8 @@ function App() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | null>(null);
+  const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
 
   useEffect(() => {
     // Emit 'get_initial_data' to request initial data
@@ -72,7 +73,6 @@ function App() {
       setTeleMetries(data);
     });
 
-
     return () => {
       socket.off('circuit_breakers');
       socket.off('telesignals');
@@ -84,6 +84,54 @@ function App() {
     setIsEditing(!isEditing);
   };
 
+  const openAddDialog = () => {
+    setSelectedItemType(null);
+    setSelectedItemToEdit(null);
+    setAddDialogOpen(true);
+  };
+
+  // When closing the dialog, reset the edit state
+  const closeDialog = () => {
+    setAddDialogOpen(false);
+    setSelectedItemType(null);
+    setSelectedItemToEdit(null);
+  };
+
+  const handleEditItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+    // Find the item to edit
+    let itemToEdit;
+    if (type === 'circuit_breaker') {
+      itemToEdit = circuitBreakers.find(item => item.id === id);
+    } else if (type === 'telesignal') {
+      itemToEdit = teleSignals.find(item => item.id === id);
+    } else {
+      itemToEdit = teleMetries.find(item => item.id === id);
+    }
+
+    if (itemToEdit) {
+      // Set up the edit dialog with the item's data
+      setSelectedItemType(type);
+      setSelectedItemToEdit(itemToEdit);
+      setAddDialogOpen(true);
+    }
+  };
+
+  const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+    // Confirm deletion
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      if (type === 'circuit_breaker') {
+        socket.emit('delete_circuit_breaker', { id });
+        setCircuitBreakers(prev => prev.filter(item => item.id !== id));
+      } else if (type === 'telesignal') {
+        socket.emit('delete_telesignal', { id });
+        setTeleSignals(prev => prev.filter(item => item.id !== id));
+      } else {
+        socket.emit('delete_telemetry', { id });
+        setTeleMetries(prev => prev.filter(item => item.id !== id));
+      }
+    }
+  };
+
   const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
     if ('ioa_cb_status' in data) {
       addCircuitBreaker(data as CircuitBreakerItem);
@@ -91,6 +139,28 @@ function App() {
       addTeleSignal(data as TeleSignalItem);
     } else if ('ioa' in data && 'unit' in data) {
       addTelemetry(data as TelemetryItem);
+    }
+  };
+
+  const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+    if ('ioa_cb_status' in data) {
+      // Update circuit breaker
+      socket.emit('update_circuit_breaker', data);
+      setCircuitBreakers(prev => prev.map(item =>
+        item.id === data.id ? { ...item, ...data } : item
+      ));
+    } else if ('ioa' in data && !('unit' in data)) {
+      // Update telesignal
+      socket.emit('update_telesignal', data);
+      setTeleSignals(prev => prev.map(item =>
+        item.id === data.id ? { ...item, ...data } : item
+      ));
+    } else if ('ioa' in data && 'unit' in data) {
+      // Update telemetry
+      socket.emit('update_telemetry', data);
+      setTeleMetries(prev => prev.map(item =>
+        item.id === data.id ? { ...item, ...data } : item
+      ));
     }
   };
 
@@ -126,15 +196,6 @@ function App() {
     }
   };
 
-  // const removeCircuitBreaker = (data: { id: string }) => {
-  //   // Send to backend instead of just updating local state
-  //   if (socket) {
-  //     socket.emit('remove_circuit_breaker', data, (response: unknown) => {
-  //       console.log('Remove circuit breaker response:', response);
-  //     });
-  //   }
-  // };
-
   const addTeleSignal = (data: TeleSignalItem) => {
     const newItem: TeleSignalItem = {
       id: Date.now().toString(),
@@ -153,14 +214,6 @@ function App() {
       });
     }
   };
-
-  // const removeTeleSignal = (data: { id: string }) => {
-  //   if (socket) {
-  //     socket.emit('remove_telesignal', data, (response: unknown) => {
-  //       console.log('Remove tele signal response:', response);
-  //     });
-  //   }
-  // };
 
   const addTelemetry = (data: TelemetryItem) => {
     const newItem: TelemetryItem = {
@@ -182,14 +235,6 @@ function App() {
       });
     }
   };
-
-  // const removeTelemetry = (data: { id: string }) => {
-  //   if (socket) {
-  //     socket.emit('remove_telemetry', data, (response: unknown) => {
-  //       console.log('Remove telemetry response:', response);
-  //     });
-  //   }
-  // };
 
   const exportData = () => {
     socket.emit('export_data');
@@ -317,7 +362,7 @@ function App() {
               <TooltipTrigger asChild>
                 <Button
                   className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
-                  onClick={() => setAddDialogOpen(true)}
+                  onClick={openAddDialog}
                 >
                   <MdAdd />
                 </Button>
@@ -331,7 +376,7 @@ function App() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className="px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black"
+                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isEditing ? 'bg-blue-100' : ''}`}
                   onClick={handleEditClick}
                 >
                   {isEditing ? <MdOutlineCheck /> : <MdOutlineModeEditOutline />}
@@ -404,32 +449,14 @@ function App() {
                 items={circuitBreakers.map(item => item.id)}
                 strategy={verticalListSortingStrategy}
               >
-
                 {circuitBreakers.map(item => (
                   <SortableItem key={item.id} id={item.id}>
                     <CircuitBreaker
                       key={item.id}
-                      id={item.id}
-                      name={item.name}
-                      ioa_cb_status={item.ioa_cb_status}
-                      ioa_cb_status_close={item.ioa_cb_status_close}
-                      ioa_cb_status_dp={item.ioa_cb_status_dp}
-                      ioa_control_dp={item.ioa_control_dp}
-                      ioa_control_open={item.ioa_control_open}
-                      ioa_control_close={item.ioa_control_close}
-                      ioa_local_remote={item.ioa_local_remote}
-                      is_sdp_mode={item.is_sdp_mode}
-
-                      is_sbo={item.is_sbo}
-                      is_double_point={item.is_double_point}
-
-                      remote={item.remote}
-                      cb_status_open={0}
-                      cb_status_close={item.cb_status_close}
-                      cb_status_dp={item.cb_status_dp}
-                      control_open={item.control_open}
-                      control_close={item.control_close}
-                      control_dp={item.control_dp}
+                      {...item}
+                      isEditing={isEditing}
+                      onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
+                      onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
                     />
                   </SortableItem>
                 ))}
@@ -456,14 +483,10 @@ function App() {
                   <SortableItem key={item.id} id={item.id}>
                     <TeleSignal
                       key={item.id}
-                      id={item.id}
-                      name={item.name}
-                      ioa={item.ioa}
-                      value={item.value}
-                      min_value={item.min_value}
-                      max_value={item.max_value}
-                      interval={item.interval}
-                      auto_mode={item.auto_mode}
+                      {...item}
+                      isEditing={isEditing}
+                      onEdit={(id) => handleEditItem(id, 'telesignal')}
+                      onDelete={(id) => handleDeleteItem(id, 'telesignal')}
                     />
                   </SortableItem>
                 ))}
@@ -490,16 +513,10 @@ function App() {
                   <SortableItem key={item.id} id={item.id}>
                     <Telemetry
                       key={item.id}
-                      id={item.id}
-                      name={item.name}
-                      ioa={item.ioa}
-                      value={item.value}
-                      unit={item.unit}
-                      min_value={item.min_value}
-                      max_value={item.max_value}
-                      scale_factor={item.scale_factor}
-                      interval={item.interval}
-                      auto_mode={item.auto_mode}
+                      {...item}
+                      isEditing={isEditing}
+                      onEdit={(id) => handleEditItem(id, 'telemetry')}
+                      onDelete={(id) => handleDeleteItem(id, 'telemetry')}
                     />
                   </SortableItem>
                 ))}
@@ -511,10 +528,14 @@ function App() {
 
       <ManageItemDialog
         isOpen={addDialogOpen}
-        onClose={() => setAddDialogOpen(false)}
-        title={`Add New Component`}
-        action="add"
-        onSubmit={addComponent}
+        onClose={closeDialog}
+        title={selectedItemToEdit ? `Edit ${selectedItemType}` : `Add New Component`}
+        action={selectedItemToEdit ? "edit" : "add"}
+        items={selectedItemType === 'circuit_breaker' ? circuitBreakers :
+          selectedItemType === 'telesignal' ? teleSignals :
+            selectedItemType === 'telemetry' ? teleMetries : []}
+        itemToEdit={selectedItemToEdit}
+        onSubmit={selectedItemToEdit ? updateComponent : addComponent}
       />
     </div>
   );

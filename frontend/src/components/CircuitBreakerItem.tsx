@@ -4,8 +4,13 @@ import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import socket from "../socket";
 import { CircuitBreakerItem } from "@/lib/items";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
-function CircuitBreaker(item: CircuitBreakerItem) {
+function CircuitBreaker(item: CircuitBreakerItem & {
+  isEditing: boolean;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
   // State variables based on your data structure
   const [isSBO, setIsSBO] = useState(item.is_sbo);
   const [isDPMode, setIsDPMode] = useState(item.is_double_point);
@@ -361,44 +366,61 @@ function CircuitBreaker(item: CircuitBreakerItem) {
             <p>Mode: {getModeText()}</p>
           </div>
 
-          {/* Toggle buttons */}
-          <div className="flex flex-row gap-2 text-white">
-            <Button
-              size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${item.remote == 1 ? 'opacity-50' : ''}`}
-              onClick={() => !isRemote && toggleSBO()}
-              disabled={isRemote}
-            >
-              SBO
-            </Button>
+          {item.isEditing ? (
+            <div className="flex flex-row gap-2 justify-center">
+              <Button
+                size="sm"
+                className={`bg-white text-blue-500 rounded w-9 h-9 border-2 border-black hover:bg-gray-300}`}
+                onClick={() => item.onEdit && item.onEdit(item.id)}
+              >
+                <FiEdit2 />
+              </Button>
+              <Button
+                size="sm"
+                className={`bg-white text-red-500 rounded w-9 h-9 border-2 border-black hover:bg-gray-300}`}
+                onClick={() => item.onDelete && item.onDelete(item.id)}
+              >
+                <FiTrash2 />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-row gap-2 text-white">
+              <Button
+                size="sm"
+                className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${item.remote == 1 ? 'opacity-50' : ''}`}
+                onClick={() => !isRemote && toggleSBO()}
+                disabled={isRemote}
+              >
+                SBO
+              </Button>
 
-            {/* Replace the toggle buttons with mode selector buttons */}
-            <Button
-              size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${!isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
-              onClick={() => !isRemote && setSPMode()}
-              disabled={isRemote}
-            >
-              SP
-            </Button>
-            <Button
-              size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
-              onClick={() => !isRemote && setDPMode()}
-              disabled={isRemote}
-            >
-              DP
-            </Button>
-            <Button
-              size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
-              onClick={() => !isRemote && setSDPMode()}
-              disabled={isRemote}
-            >
-              SDP
-            </Button>
-          </div>
-
+              {/* Replace the toggle buttons with mode selector buttons */}
+              <Button
+                size="sm"
+                className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${!isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+                onClick={() => !isRemote && setSPMode()}
+                disabled={isRemote}
+              >
+                SP
+              </Button>
+              <Button
+                size="sm"
+                className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDPMode && !isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+                onClick={() => !isRemote && setDPMode()}
+                disabled={isRemote}
+              >
+                DP
+              </Button>
+              <Button
+                size="sm"
+                className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSDPMode ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${isRemote ? 'opacity-50' : ''}`}
+                onClick={() => !isRemote && setSDPMode()}
+                disabled={isRemote}
+              >
+                SDP
+              </Button>
+            </div>
+          )}
           {/* Local/Remote switch */}
           <div className="flex flex-row gap-4 items-center">
             <span className={`font-bold ${!isRemote ? 'text-red-500' : ''}`}>Local</span>
@@ -411,7 +433,7 @@ function CircuitBreaker(item: CircuitBreakerItem) {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 

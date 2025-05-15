@@ -3,8 +3,13 @@ import { Button } from "./ui/button";
 import { useEffect, useState } from 'react';
 import socket from '../socket';
 import { TeleSignalItem } from "@/lib/items";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
-function TeleSignal(item: TeleSignalItem) {
+function TeleSignal(item: TeleSignalItem & {
+  isEditing: boolean;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
   const [isOn, setIsOn] = useState(item.value === 1); // value: 0 is off, 1 is on
   const [isAuto, setAuto] = useState(item.auto_mode);
 
@@ -50,7 +55,7 @@ function TeleSignal(item: TeleSignalItem) {
   };
 
   return (
-    <div className="p-3 flex items-center text-center border">
+    <div className="p-3 flex items-center text-center border-b-2">
       <p className="font-bold w-1/3">{item.name}</p>
       <div className="flex flex-col w-1/3">
         <p className={`${isOn ? 'text-green-500' : 'text-red-500'} text-2xl font-bold`}>
@@ -58,21 +63,38 @@ function TeleSignal(item: TeleSignalItem) {
         </p>
         <p className="text-sm">IOA: {item.ioa}</p>
       </div>
-      <div className="flex flex-col w-1/3 gap-0.5 items-center">
-        <Button
-          className={`${isAuto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
-          onClick={toggleAutoMode}
-        >
-          A
-        </Button>
-        <Button
-          className={`${isOn ? 'bg-green-500' : 'bg-red-500'} text-white rounded w-9 h-9  border-2 border-black`}
-          onClick={toggleValue}
-          disabled={isAuto}
-        >
-          {isOn ? 'ON' : 'OFF'}
-        </Button>
-      </div>
+      {item.isEditing ? (
+        <div className="flex flex-col w-1/3 gap-0.5 items-center">
+          <Button
+            className={`bg-white text-blue-500 rounded w-9 h-9 border-2 border-black hover:bg-gray-300`}
+            onClick={() => item.onEdit && item.onEdit(item.id)}
+          >
+            <FiEdit2 />
+          </Button>
+          <Button
+            className={`bg-white text-red-500 rounded w-9 h-9 border-2 border-black hover:bg-gray-300`}
+            onClick={() => item.onDelete && item.onDelete(item.id)}
+          >
+            <FiTrash2 />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col w-1/3 gap-0.5 items-center">
+          <Button
+            className={`${isAuto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
+            onClick={toggleAutoMode}
+          >
+            A
+          </Button>
+          <Button
+            className={`${isOn ? 'bg-green-500' : 'bg-red-500'} text-white rounded w-9 h-9  border-2 border-black`}
+            onClick={toggleValue}
+            disabled={isAuto}
+          >
+            {isOn ? 'ON' : 'OFF'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

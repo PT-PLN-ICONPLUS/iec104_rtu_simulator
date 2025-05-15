@@ -17,8 +17,9 @@ type ManageItemDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  action: "add" | "remove";
+  action: "add" | "edit" | "remove";  // Added "edit"
   items?: Item[];
+  itemToEdit?: any;  // Add this prop
   onSubmit: (data: any) => void;
 };
 
@@ -27,6 +28,7 @@ export function ManageItemDialog({
   onClose,
   action,
   items = [],
+  itemToEdit,
   onSubmit,
 }: ManageItemDialogProps) {
   // Common fields
@@ -55,36 +57,43 @@ export function ManageItemDialog({
   const [minValue, setMinValue] = useState("");
   const [maxValue, setMaxValue] = useState("");
 
-  // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Reset form on open/close
   useEffect(() => {
-    if (isOpen) {
-      // Keep defaults
-      setScaleFactor("1");
-      // Default valTelemetry based on min and max if they're set
+    if (isOpen && action === "edit" && itemToEdit) {
+      // Set form fields based on itemToEdit
+      setName(itemToEdit.name || "");
 
-    } else {
-      // Reset form
-      setName("");
-      setAddress("");
-      setInterval("2");
-      setSelectedItem("");
-      setIOAControlOpen("");
-      setIOAControlClose("");
-      setIOALocalRemote("");
-      setIsDoublePoint("false");
-      setAddressDP("");
-      setIoaCbStatusClose("");
-      setControlDP("");
-      setUnit("");
-      setMinValue("");
-      setMaxValue("");
-      setErrors({});
-      setValTelemetry("");
+      if ('ioa_cb_status' in itemToEdit) {
+        // Circuit breaker
+        setItemType("Circuit Breaker");
+        setAddress(itemToEdit.ioa_cb_status?.toString() || "");
+        setIOAControlOpen(itemToEdit.ioa_control_open?.toString() || "");
+        setIOAControlClose(itemToEdit.ioa_control_close?.toString() || "");
+        setIOALocalRemote(itemToEdit.ioa_local_remote?.toString() || "");
+        setIsDoublePoint(itemToEdit.is_double_point ? "true" : "false");
+        setAddressDP(itemToEdit.ioa_cb_status_dp?.toString() || "");
+        setIoaCbStatusClose(itemToEdit.ioa_cb_status_close?.toString() || "");
+        setControlDP(itemToEdit.ioa_control_dp?.toString() || "");
+      } else if ('ioa' in itemToEdit && !('unit' in itemToEdit)) {
+        // Telesignal
+        setItemType("Telesignal");
+        setAddress(itemToEdit.ioa?.toString() || "");
+        setInterval(itemToEdit.interval?.toString() || "2");
+        setValTelesignal(itemToEdit.value?.toString() || "0");
+      } else if ('ioa' in itemToEdit && 'unit' in itemToEdit) {
+        // Telemetry
+        setItemType("Telemetry");
+        setAddress(itemToEdit.ioa?.toString() || "");
+        setInterval(itemToEdit.interval?.toString() || "2");
+        setUnit(itemToEdit.unit || "");
+        setValTelemetry(itemToEdit.value?.toString() || "0");
+        setScaleFactor(itemToEdit.scale_factor?.toString() || "1");
+        setMinValue(itemToEdit.min_value?.toString() || "0");
+        setMaxValue(itemToEdit.max_value?.toString() || "100");
+      }
     }
-  }, [isOpen, minValue, maxValue]);
+  }, [isOpen, action, itemToEdit]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -239,10 +248,13 @@ export function ManageItemDialog({
       return;
     }
 
-    if (action === "add") {
+    const commonData = action === "edit" && itemToEdit ? { id: itemToEdit.id } : {};
+
+    if (action === "add" || action === "edit") {
       if (itemType === "Circuit Breaker") {
         const isDP = isDoublePoint === "true";
         onSubmit({
+          ...commonData,
           name,
           ioa_cb_status: parseInt(address),
           ioa_cb_status_close: parseInt(ioaCbStatusClose),
@@ -282,13 +294,22 @@ export function ManageItemDialog({
     onClose();
   };
 
+  const getDialogTitle = () => {
+    switch (action) {
+      case "add": return "Add new item";
+      case "edit": return "Edit item";
+      case "remove": return "Remove item";
+      default: return "Manage item";
+    }
+  };
+
   return (
     <>
       <Toaster />
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
-            Add new item
+            {getDialogTitle()}
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
