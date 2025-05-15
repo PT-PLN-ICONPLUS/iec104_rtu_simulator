@@ -16,6 +16,7 @@ import { CgImport } from "react-icons/cg";
 import { PiExportBold } from "react-icons/pi";
 import { ManageItemDialog } from './components/ManageItemDialog';
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
+import { TbDragDrop } from "react-icons/tb";
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
@@ -23,6 +24,7 @@ function App() {
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | null>(null);
   const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
@@ -87,6 +89,10 @@ function App() {
   const handleEditClick = () => {
     setIsEditing(!isEditing);
   };
+
+  const handleDragNDropClick = () => {
+    setIsDragging(!isDragging);
+  }
 
   const openAddDialog = () => {
     setSelectedItemType(null);
@@ -399,6 +405,7 @@ function App() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -410,7 +417,23 @@ function App() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isEditing ? 'Done Editing' : 'Edit Mode'}</p>
+                <p>{isEditing ? 'Done' : 'Edit Mode'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className={`px-2 py-1 rounded border border-black hover:bg-gray-300 bg-white text-black ${isEditing ? 'bg-blue-100' : ''}`}
+                  onClick={handleDragNDropClick}
+                >
+                  {isDragging ? <MdOutlineCheck /> : <TbDragDrop />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isDragging ? 'Done' : 'Drag and Drop Mode'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -462,6 +485,7 @@ function App() {
       </div>
 
       <div className="flex flex-row w-full">
+
         {/* Circuit Breaker Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           <div className="flex flex-row border-b-2 justify-center">
@@ -477,7 +501,11 @@ function App() {
                 strategy={verticalListSortingStrategy}
               >
                 {circuitBreakers.map(item => (
-                  <SortableItem key={item.id} id={item.id}>
+                  <SortableItem
+                    key={item.id}
+                    id={item.id}
+                    isDraggingEnabled={isDragging}
+                  >
                     <CircuitBreaker
                       key={item.id}
                       {...item}
@@ -507,7 +535,11 @@ function App() {
                 strategy={verticalListSortingStrategy}
               >
                 {teleSignals.map(item => (
-                  <SortableItem key={item.id} id={item.id}>
+                  <SortableItem
+                    key={item.id}
+                    id={item.id}
+                    isDraggingEnabled={isDragging}
+                  >
                     <TeleSignal
                       key={item.id}
                       {...item}
@@ -537,7 +569,11 @@ function App() {
                 strategy={verticalListSortingStrategy}
               >
                 {teleMetries.map(item => (
-                  <SortableItem key={item.id} id={item.id}>
+                  <SortableItem
+                    key={item.id}
+                    id={item.id}
+                    isDraggingEnabled={isDragging}
+                  >
                     <Telemetry
                       key={item.id}
                       {...item}
