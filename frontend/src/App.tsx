@@ -177,23 +177,50 @@ function App() {
 
   const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
     if ('ioa_cb_status' in data) {
-      // Update circuit breaker
-      socket.emit('update_circuit_breaker', data);
-      setCircuitBreakers(prev => prev.map(item =>
-        item.id === data.id ? { ...item, ...data } : item
-      ));
+      // Update circuit breaker - find the original item first
+      const originalItem = circuitBreakers.find(item => item.id === data.id);
+      if (originalItem) {
+        // Merge the original item with the updated data
+        const updatedItem = { ...originalItem, ...data };
+
+        // Send the complete updated item to the server
+        socket.emit('update_circuit_breaker', updatedItem);
+
+        // Update the local state
+        setCircuitBreakers(prev => prev.map(item =>
+          item.id === data.id ? updatedItem : item
+        ));
+      }
     } else if ('ioa' in data && !('unit' in data)) {
-      // Update telesignal
-      socket.emit('update_telesignal', data);
-      setTeleSignals(prev => prev.map(item =>
-        item.id === data.id ? { ...item, ...data } : item
-      ));
+      // Update telesignal - find the original item first
+      const originalItem = teleSignals.find(item => item.id === data.id);
+      if (originalItem) {
+        // Merge the original item with the updated data
+        const updatedItem = { ...originalItem, ...data };
+
+        // Send the complete updated item to the server
+        socket.emit('update_telesignal', updatedItem);
+
+        // Update the local state
+        setTeleSignals(prev => prev.map(item =>
+          item.id === data.id ? updatedItem : item
+        ));
+      }
     } else if ('ioa' in data && 'unit' in data) {
-      // Update telemetry
-      socket.emit('update_telemetry', data);
-      setTeleMetries(prev => prev.map(item =>
-        item.id === data.id ? { ...item, ...data } : item
-      ));
+      // Update telemetry - find the original item first
+      const originalItem = teleMetries.find(item => item.id === data.id);
+      if (originalItem) {
+        // Merge the original item with the updated data
+        const updatedItem = { ...originalItem, ...data };
+
+        // Send the complete updated item to the server
+        socket.emit('update_telemetry', updatedItem);
+
+        // Update the local state
+        setTeleMetries(prev => prev.map(item =>
+          item.id === data.id ? updatedItem : item
+        ));
+      }
     }
   };
 

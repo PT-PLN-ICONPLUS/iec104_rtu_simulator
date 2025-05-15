@@ -735,18 +735,6 @@ export function ManageItemDialog({
                         </div>
                       </>
                     )}
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="interval" className="w-1/3">Interval</Label>
-                      <input
-                        type="number"
-                        id="interval"
-                        className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
-                        value={interval}
-                        onChange={(e) => setInterval(e.target.value)}
-                      />
-                      {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
-                    </div>
                   </>
                 )}
 
