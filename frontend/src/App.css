@@ -40,3 +40,34 @@
 .read-the-docs {
   color: #888;
 }
+
+.sortable-item {
+  position: relative;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 10px;
+  left: 5px;
+  font-size: 18px;
+  color: #666;
+  z-index: 1;
+  cursor: grab;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Make sure other clickable elements are not covered by the drag handle */
+.sortable-item > * {
+  pointer-events: auto;
+  position: relative;
+  z-index: 0;
+}

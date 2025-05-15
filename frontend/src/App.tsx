@@ -7,6 +7,10 @@ import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
 import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableItem } from './components/SortableItem';
+
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
   const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
@@ -214,6 +218,69 @@ function App() {
     reader.readAsText(file);
   };
 
+  const handleDragEndCircuitBreakers = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setCircuitBreakers((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Emit the new order to backend if needed
+        socket.emit('update_order', {
+          type: 'circuit_breakers',
+          items: newItems.map(item => item.id)
+        });
+
+        return newItems;
+      });
+    }
+  };
+
+  const handleDragEndTeleSignals = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setTeleSignals((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Emit the new order to backend if needed
+        socket.emit('update_order', {
+          type: 'telesignals',
+          items: newItems.map(item => item.id)
+        });
+
+        return newItems;
+      });
+    }
+  };
+
+  const handleDragEndTeleMetries = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setTeleMetries((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Emit the new order to backend if needed
+        socket.emit('update_order', {
+          type: 'telemetries',
+          items: newItems.map(item => item.id)
+        });
+
+        return newItems;
+      });
+    }
+  };
+
   return (
     <div className="min-w-screen fixed">
       <div className="flex justify-between items-center py-3 px-4 border-b">
@@ -255,32 +322,45 @@ function App() {
             items={circuitBreakers}
           />
           <div className="flex-1 overflow-y-auto">
-            {circuitBreakers.map(item => (
-              <CircuitBreaker
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                ioa_cb_status={item.ioa_cb_status}
-                ioa_cb_status_close={item.ioa_cb_status_close}
-                ioa_cb_status_dp={item.ioa_cb_status_dp}
-                ioa_control_dp={item.ioa_control_dp}
-                ioa_control_open={item.ioa_control_open}
-                ioa_control_close={item.ioa_control_close}
-                ioa_local_remote={item.ioa_local_remote}
-                is_sdp_mode={item.is_sdp_mode}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndCircuitBreakers}
+            >
+              <SortableContext
+                items={circuitBreakers.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
 
-                is_sbo={item.is_sbo}
-                is_double_point={item.is_double_point}
+                {circuitBreakers.map(item => (
+                  <SortableItem key={item.id} id={item.id}>
+                    <CircuitBreaker
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      ioa_cb_status={item.ioa_cb_status}
+                      ioa_cb_status_close={item.ioa_cb_status_close}
+                      ioa_cb_status_dp={item.ioa_cb_status_dp}
+                      ioa_control_dp={item.ioa_control_dp}
+                      ioa_control_open={item.ioa_control_open}
+                      ioa_control_close={item.ioa_control_close}
+                      ioa_local_remote={item.ioa_local_remote}
+                      is_sdp_mode={item.is_sdp_mode}
 
-                remote={item.remote}
-                cb_status_open={0}
-                cb_status_close={item.cb_status_close}
-                cb_status_dp={item.cb_status_dp}
-                control_open={item.control_open}
-                control_close={item.control_close}
-                control_dp={item.control_dp}
-              />
-            ))}
+                      is_sbo={item.is_sbo}
+                      is_double_point={item.is_double_point}
+
+                      remote={item.remote}
+                      cb_status_open={0}
+                      cb_status_close={item.cb_status_close}
+                      cb_status_dp={item.cb_status_dp}
+                      control_open={item.control_open}
+                      control_close={item.control_close}
+                      control_dp={item.control_dp}
+                    />
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
 
@@ -293,18 +373,31 @@ function App() {
             items={teleSignals}
           />
           <div className="flex-1 overflow-y-auto">
-            {teleSignals.map(item => (
-              <TeleSignal
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                ioa={item.ioa}
-                value={item.value}
-                auto_mode={item.auto_mode}
-                min_value={item.min_value}
-                max_value={item.max_value}
-                interval={item.interval} />
-            ))}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndTeleSignals}
+            >
+              <SortableContext
+                items={teleSignals.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {teleSignals.map(item => (
+                  <SortableItem key={item.id} id={item.id}>
+                    <TeleSignal
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      ioa={item.ioa}
+                      value={item.value}
+                      min_value={item.min_value}
+                      max_value={item.max_value}
+                      interval={item.interval}
+                      auto_mode={item.auto_mode}
+                    />
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
 
@@ -317,21 +410,33 @@ function App() {
             items={teleMetries}
           />
           <div className="flex-1 overflow-y-auto">
-            {teleMetries.map(item => (
-              <Telemetry
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                ioa={item.ioa}
-                unit={item.unit}
-                value={item.value}
-                min_value={item.min_value}
-                max_value={item.max_value}
-                scale_factor={item.scale_factor || 1.0}
-                auto_mode={item.auto_mode}
-                interval={item.interval}
-              />
-            ))}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndTeleMetries}
+            >
+              <SortableContext
+                items={teleMetries.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {teleMetries.map(item => (
+                  <SortableItem key={item.id} id={item.id}>
+                    <Telemetry
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      ioa={item.ioa}
+                      value={item.value}
+                      unit={item.unit}
+                      min_value={item.min_value}
+                      max_value={item.max_value}
+                      scale_factor={item.scale_factor}
+                      interval={item.interval}
+                      auto_mode={item.auto_mode}
+                    />
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
       </div>

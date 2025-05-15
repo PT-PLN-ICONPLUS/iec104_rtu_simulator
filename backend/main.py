@@ -479,6 +479,38 @@ async def import_data(sid, data):
     except Exception as e:
         logger.error(f"Error importing data: {e}")
         await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
+
+@sio.event
+async def update_order(sid, data):
+    item_type = data.get('type')
+    item_ids = data.get('items', [])
+    
+    if item_type == 'circuit_breakers':
+        # Reorder circuit_breakers based on item_ids
+        global circuit_breakers
+        ordered_items = {}
+        for id in item_ids:
+            if id in circuit_breakers:
+                ordered_items[id] = circuit_breakers[id]
+        circuit_breakers = ordered_items
+        
+    elif item_type == 'telesignals':
+        # Reorder telesignals
+        global telesignals
+        ordered_items = {}
+        for id in item_ids:
+            if id in telesignals:
+                ordered_items[id] = telesignals[id]
+        telesignals = ordered_items
+        
+    elif item_type == 'telemetries':
+        # Reorder telemetries
+        global telemetries
+        ordered_items = {}
+        for id in item_ids:
+            if id in telemetries:
+                ordered_items[id] = telemetries[id]
+        telemetries = ordered_items
     
 async def monitor_circuit_breaker_changes():
     """
