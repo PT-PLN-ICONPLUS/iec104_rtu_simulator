@@ -186,26 +186,56 @@ async def update_circuit_breaker(sid, data):
     # Find the item by ID
     for item_id, item in list(circuit_breakers.items()):
         if id == item_id:
-            # Update all fields that are provided in the data
-            for key, value in data.items():
-                if hasattr(circuit_breakers[item_id], key) and key != 'id':
-                    setattr(circuit_breakers[item_id], key, value)
-                    
-                    # Update IEC server if this is an IOA-related field
-                    if key == 'remote':
-                        IEC_SERVER.update_ioa(item.ioa_local_remote, value)
-                    elif key == 'cb_status_open':
-                        IEC_SERVER.update_ioa(item.ioa_cb_status, value)
-                    elif key == 'cb_status_close':
-                        IEC_SERVER.update_ioa(item.ioa_cb_status_close, value)
-                    elif key == 'cb_status_dp':
-                        IEC_SERVER.update_ioa(item.ioa_cb_status_dp, value)
-                    elif key == 'control_open':
-                        IEC_SERVER.update_ioa(item.ioa_control_open, value)
-                    elif key == 'control_close':
-                        IEC_SERVER.update_ioa(item.ioa_control_close, value)
-                    elif key == 'control_dp':
-                        IEC_SERVER.update_ioa(item.ioa_control_dp, value)
+            ioa_changes = {}
+            for ioa_key in ['ioa_cb_status', 'ioa_cb_status_close', 'ioa_control_open', 
+                           'ioa_control_close', 'ioa_local_remote', 
+                           'ioa_cb_status_dp', 'ioa_control_dp']:
+                if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
+                    ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
+            
+            # If there are IOA changes, we need to remove old IOAs and add new ones
+            if ioa_changes:
+                # First, remove all old IOAs
+                IEC_SERVER.remove_ioa(item.ioa_cb_status)
+                IEC_SERVER.remove_ioa(item.ioa_cb_status_close)
+                IEC_SERVER.remove_ioa(item.ioa_control_open)
+                IEC_SERVER.remove_ioa(item.ioa_control_close)
+                IEC_SERVER.remove_ioa(item.ioa_local_remote)
+                
+                if item.is_double_point:
+                    if item.ioa_cb_status_dp:
+                        IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
+                    if item.ioa_control_dp:
+                        IEC_SERVER.remove_ioa(item.ioa_control_dp)
+                
+                # Update all data fields
+                for key, value in data.items():
+                    if hasattr(circuit_breakers[item_id], key) and key != 'id':
+                        setattr(circuit_breakers[item_id], key, value)
+                
+                # Add new IOAs with updated configuration
+                add_circuit_breaker_ioa(circuit_breakers[item_id])
+            else:
+                # No IOA changes, just update fields and IOA values
+                for key, value in data.items():
+                    if hasattr(circuit_breakers[item_id], key) and key != 'id':
+                        setattr(circuit_breakers[item_id], key, value)
+                        
+                        # Update IEC server if this is an IOA-related field value
+                        if key == 'remote':
+                            IEC_SERVER.update_ioa(item.ioa_local_remote, value)
+                        elif key == 'cb_status_open':
+                            IEC_SERVER.update_ioa(item.ioa_cb_status, value)
+                        elif key == 'cb_status_close':
+                            IEC_SERVER.update_ioa(item.ioa_cb_status_close, value)
+                        elif key == 'cb_status_dp':
+                            IEC_SERVER.update_ioa(item.ioa_cb_status_dp, value)
+                        elif key == 'control_open':
+                            IEC_SERVER.update_ioa(item.ioa_control_open, value)
+                        elif key == 'control_close':
+                            IEC_SERVER.update_ioa(item.ioa_control_close, value)
+                        elif key == 'control_dp':
+                            IEC_SERVER.update_ioa(item.ioa_control_dp, value)
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
