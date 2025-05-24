@@ -11,12 +11,16 @@ class CircuitBreakerItem(BaseModel):
     ioa_control_open: int        # Control Open (Coil)
     ioa_control_close: int       # Control Close (Coil)  
     ioa_control_dp: Optional[int] = None  # Control Double (Holding Register)
-    ioa_local_remote: int        # Local/Remote Position (Coil)
+    ioa_local_remote_sp: int        # Local/Remote Position (Coil)
+    ioa_local_remote_dp: int  # Local/Remote Double (Holding Register)
+    
     is_sbo: bool
     is_double_point: bool
     is_sdp_mode: Optional[bool] = False
+    is_local_remote_dp: bool = False
     
-    remote: int = 0
+    remote_sp: int = 0
+    remote_dp: int = 0
     cb_status_open: int = 0
     cb_status_close: int = 0
     cb_status_dp: int = 0

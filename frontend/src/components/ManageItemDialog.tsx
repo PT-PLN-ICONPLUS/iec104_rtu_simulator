@@ -42,7 +42,9 @@ export function ManageItemDialog({
   // Circuit breaker fields
   const [ioaControlOpen, setIOAControlOpen] = useState("");
   const [ioaControlClose, setIOAControlClose] = useState("");
-  const [ioaLocalRemote, setIOALocalRemote] = useState("");
+  const [ioaLocalRemoteSP, setIOALocalRemoteSP] = useState("");
+  const [ioaLocalRemoteDP, setIOALocalRemoteDP] = useState("");
+  const [isLocalRemoteDP, setIsLocalRemoteDP] = useState("false");
   const [isDoublePoint, setIsDoublePoint] = useState("false");
   const [addressDP, setAddressDP] = useState("");
   const [ioaCbStatusClose, setIoaCbStatusClose] = useState("");
@@ -71,7 +73,9 @@ export function ManageItemDialog({
         setAddress(itemToEdit.ioa_cb_status?.toString() || "");
         setIOAControlOpen(itemToEdit.ioa_control_open?.toString() || "");
         setIOAControlClose(itemToEdit.ioa_control_close?.toString() || "");
-        setIOALocalRemote(itemToEdit.ioa_local_remote?.toString() || "");
+        setIOALocalRemoteSP(itemToEdit.ioa_local_remote_sp?.toString() || "");
+        setIOALocalRemoteDP(itemToEdit.ioa_local_remote_dp?.toString() || "");
+        setIsLocalRemoteDP(itemToEdit.is_local_remote_dp ? "true" : "false");
         setIsDoublePoint(itemToEdit.is_double_point ? "true" : "false");
         setAddressDP(itemToEdit.ioa_cb_status_dp?.toString() || "");
         setIoaCbStatusClose(itemToEdit.ioa_cb_status_close?.toString() || "");
@@ -107,8 +111,7 @@ export function ManageItemDialog({
     setItemType("");
     setIOAControlOpen("");
     setIOAControlClose("");
-    setIOALocalRemote("");
-    setIsDoublePoint("false");
+    setIOALocalRemoteSP("");
     setAddressDP("");
     setIoaCbStatusClose("");
     setControlDP("");
@@ -196,15 +199,35 @@ export function ManageItemDialog({
         newErrors.ioaControlClose = "IOA Control Close already in use";
       }
 
-      if (!ioaLocalRemote) {
-        newErrors.ioaLocalRemote = "IOA Local Remote is required";
-      } else if (isNaN(Number(ioaLocalRemote))) {
-        newErrors.ioaLocalRemote = "IOA Local Remote must be a number";
+      if (!ioaLocalRemoteSP) {
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote SP is required";
+      } else if (isNaN(Number(ioaLocalRemoteSP))) {
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote SP must be a number";
       } else if (
         action === "add" &&
-        items.some((item: any) => item.ioa_local_remote === Number(ioaLocalRemote))
+        items.some((item: any) => item.ioa_local_remote_sp === Number(ioaLocalRemoteSP))
       ) {
-        newErrors.ioaLocalRemote = "IOA Local Remote already in use";
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote already in use";
+      }
+
+      if (!ioaLocalRemoteDP) {
+        newErrors.ioaLocalRemoteDP = "IOA Local Remote DP is required";
+      } else if (isNaN(Number(ioaLocalRemoteDP))) {
+        newErrors.ioaLocalRemoteDP = "IOA Local Remote DP must be a number";
+      } else if (
+        action === "add" &&
+        items.some((item: any) => item.ioa_local_remote_dp === Number(ioaLocalRemoteDP))
+      ) {
+        newErrors.ioaLocalRemoteDP = "IOA Local Remote DP already in use";
+      }
+
+      if (isLocalRemoteDP === "true") {
+        if (!ioaLocalRemoteSP || isNaN(Number(ioaLocalRemoteSP))) {
+          newErrors.ioaLocalRemoteSP = "IOA Local Remote SP must be a number";
+        }
+        if (!ioaLocalRemoteDP || isNaN(Number(ioaLocalRemoteDP))) {
+          newErrors.ioaLocalRemoteDP = "IOA Local Remote DP must be a number";
+        }
       }
 
       if (!ioaCbStatusClose) {
@@ -285,7 +308,9 @@ export function ManageItemDialog({
           ioa_cb_status_close: parseInt(ioaCbStatusClose),
           ioa_control_open: parseInt(ioaControlOpen),
           ioa_control_close: parseInt(ioaControlClose),
-          ioa_local_remote: parseInt(ioaLocalRemote),
+          ioa_local_remote_sp: parseInt(ioaLocalRemoteSP),
+          ioa_local_remote_dp: parseInt(ioaLocalRemoteDP),
+          is_local_remote_dp: isLocalRemoteDP === "true",
           is_double_point: isDP,
           ioa_cb_status_dp: isDP ? parseInt(addressDP) : undefined,
           ioa_control_dp: isDP ? parseInt(controlDP) : undefined,
@@ -494,18 +519,54 @@ export function ManageItemDialog({
                     )}
 
                     <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
-                        IOA Local/Remote
+                      <Label htmlFor="ioaLocalRemoteSP" className="w-1/3">
+                        IOA Local/Remote SP
                       </Label>
                       <input
                         type="number"
-                        id="ioaLocalRemote"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
-                        value={ioaLocalRemote}
-                        onChange={(e) => setIOALocalRemote(e.target.value)}
+                        id="ioaLocalRemoteSP"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemoteSP ? "border-red-500" : ""}`}
+                        value={ioaLocalRemoteSP}
+                        onChange={(e) => setIOALocalRemoteSP(e.target.value)}
                       />
-                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+                      {errors.ioaLocalRemoteSP && <p className="text-red-500 text-xs">{errors.ioaLocalRemoteSP}</p>}
                     </div>
+
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label className="w-1/3">Local Remote DP</Label>
+                      <RadioGroup
+                        value={isLocalRemoteDP}
+                        onValueChange={setIsLocalRemoteDP}
+                        defaultValue="false"
+                      >
+                        <div className="flex flex-row gap-6">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="true" id="lr-dp-yes" />
+                            <Label htmlFor="lr-dp-yes">Yes</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="false" id="lr-dp-no" />
+                            <Label htmlFor="lr-dp-no">No</Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {isLocalRemoteDP === "true" && (
+                      <div className="flex w-full items-center gap-1.5">
+                        <Label htmlFor="ioaLocalRemoteDP" className="w-1/3">
+                          IOA Local/Remote DP
+                        </Label>
+                        <input
+                          type="number"
+                          id="ioaLocalRemoteDP"
+                          className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemoteDP ? "border-red-500" : ""}`}
+                          value={ioaLocalRemoteDP}
+                          onChange={(e) => setIOALocalRemoteDP(e.target.value)}
+                        />
+                        {errors.ioaLocalRemoteDP && <p className="text-red-500 text-xs">{errors.ioaLocalRemoteDP}</p>}
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -679,17 +740,31 @@ export function ManageItemDialog({
                     </div>
 
                     <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
+                      <Label htmlFor="ioaLocalRemoteSP" className="w-1/3">
                         IOA Local/Remote
                       </Label>
                       <input
                         type="number"
-                        id="ioaLocalRemote"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
-                        value={ioaLocalRemote}
-                        onChange={(e) => setIOALocalRemote(e.target.value)}
+                        id="ioaLocalRemoteSP"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemoteSP ? "border-red-500" : ""}`}
+                        value={ioaLocalRemoteSP}
+                        onChange={(e) => setIOALocalRemoteSP(e.target.value)}
                       />
-                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+                      {errors.ioaLocalRemoteSP && <p className="text-red-500 text-xs">{errors.ioaLocalRemoteSP}</p>}
+                    </div>
+
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="isLocalRemoteDP" className="w-1/3">
+                        Local/Remote DP
+                      </Label>
+                      <input
+                        type="boolean"
+                        id="isLocalRemoteDP"
+                        className={`border rounded p-2 w-2/3 ${errors.isLocalRemoteDP ? "border-red-500" : ""}`}
+                        value={isLocalRemoteDP}
+                        onChange={(e) => setIsLocalRemoteDP(e.target.value)}
+                      />
+                      {errors.isLocalRemoteDP && <p className="text-red-500 text-xs">{errors.isLocalRemoteDP}</p>}
                     </div>
 
                     <div className="flex w-full items-center gap-1.5">

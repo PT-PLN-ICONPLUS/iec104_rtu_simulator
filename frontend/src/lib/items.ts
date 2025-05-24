@@ -8,11 +8,14 @@ export interface CircuitBreakerItem {
   ioa_control_close: number;
   ioa_cb_status_dp?: number;
   ioa_control_dp?: number;
-  ioa_local_remote: number;
+  ioa_local_remote_sp: number;
+  ioa_local_remote_dp: number;
+  is_local_remote_dp: boolean;
   is_sbo: boolean;
   is_double_point: boolean;
   is_sdp_mode: boolean;
-  remote: number;
+  remote_sp: number;
+  remote_dp: number;
   cb_status_open: number
   cb_status_close: number
   cb_status_dp: number

@@ -160,7 +160,9 @@ def add_circuit_breaker_ioa(item: CircuitBreakerItem):
         IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, callback, True)
         IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, callback, True)
     
-    IEC_SERVER.add_ioa(item.ioa_local_remote, SinglePointInformation, 0, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_local_remote_sp, SinglePointInformation, 0, callback, True)
+    if item.is_local_remote_dp:
+        IEC_SERVER.add_ioa(item.ioa_local_remote_dp, DoublePointInformation, 0, callback, True)
     
     logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
     
@@ -188,7 +190,7 @@ async def update_circuit_breaker(sid, data):
         if id == item_id:
             ioa_changes = {}
             for ioa_key in ['ioa_cb_status', 'ioa_cb_status_close', 'ioa_control_open', 
-                           'ioa_control_close', 'ioa_local_remote', 
+                           'ioa_control_close', 'ioa_local_remote_sp', 'ioa_local_remote_dp', 
                            'ioa_cb_status_dp', 'ioa_control_dp']:
                 if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
                     ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
@@ -200,13 +202,16 @@ async def update_circuit_breaker(sid, data):
                 IEC_SERVER.remove_ioa(item.ioa_cb_status_close)
                 IEC_SERVER.remove_ioa(item.ioa_control_open)
                 IEC_SERVER.remove_ioa(item.ioa_control_close)
-                IEC_SERVER.remove_ioa(item.ioa_local_remote)
+                IEC_SERVER.remove_ioa(item.ioa_local_remote_sp)
                 
                 if item.is_double_point:
                     if item.ioa_cb_status_dp:
                         IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
                     if item.ioa_control_dp:
                         IEC_SERVER.remove_ioa(item.ioa_control_dp)
+                        
+                if item.is_local_remote_dp:
+                    IEC_SERVER.remove_ioa(item.ioa_local_remote_dp)
                 
                 # Update all data fields
                 for key, value in data.items():
@@ -222,8 +227,10 @@ async def update_circuit_breaker(sid, data):
                         setattr(circuit_breakers[item_id], key, value)
                         
                         # Update IEC server if this is an IOA-related field value
-                        if key == 'remote':
-                            IEC_SERVER.update_ioa(item.ioa_local_remote, value)
+                        if key == 'remote_sp':
+                            IEC_SERVER.update_ioa(item.ioa_local_remote_sp, value)
+                        elif key == 'remote_dp':
+                            IEC_SERVER.update_ioa(item.ioa_local_remote_dp, value)
                         elif key == 'cb_status_open':
                             IEC_SERVER.update_ioa(item.ioa_cb_status, value)
                         elif key == 'cb_status_close':
@@ -256,7 +263,9 @@ async def remove_circuit_breaker(sid, data):
         if item.is_double_point and item.ioa_cb_status_dp:
             IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
             IEC_SERVER.remove_ioa(item.ioa_control_dp)
-        IEC_SERVER.remove_ioa(item.ioa_local_remote)
+        IEC_SERVER.remove_ioa(item.ioa_local_remote_sp)
+        if item.is_local_remote_dp:
+            IEC_SERVER.remove_ioa(item.ioa_local_remote_dp)
         
         logger.info(f"Removed circuit breaker: {item.name}")
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -449,6 +458,7 @@ async def update_telemetry(sid, data):
                 logger.info(f"Updated telemetry: {item.name}, data: {telemetries[item_id].model_dump()}")
                 await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
                 return {"status": "success"}
+    return {"status": "error", "message": "Telemetry not found"}
 
 @sio.event
 async def remove_telemetry(sid, data):
@@ -603,7 +613,9 @@ async def monitor_circuit_breaker_changes():
                         "control_open": None,
                         "control_close": None,
                         "control_dp": None,
-                        "remote": None
+                        "remote_sp": None,
+                        "remote_dp": None,
+                        "is_local_remote_dp": None
                     }
                 
                 # Check if single point status values changed
@@ -657,15 +669,24 @@ async def monitor_circuit_breaker_changes():
                         cb_changed = True
                         logger.info(f"Change detected for CB {cb.name} control DP: {server_value}")
                 
-                # Check if remote value changed
-                if cb.ioa_local_remote in IEC_SERVER.ioa_list:
-                    server_value = IEC_SERVER.ioa_list[cb.ioa_local_remote]['data']
-                    if previous_values[cb_id]["remote"] != server_value:
-                        previous_values[cb_id]["remote"] = server_value
-                        circuit_breakers[cb_id].remote = server_value
+                # Check if local/remote single point changed
+                if cb.ioa_local_remote_sp in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_local_remote_sp]['data']
+                    if previous_values[cb_id]["remote_sp"] != server_value:
+                        previous_values[cb_id]["remote_sp"] = server_value
+                        circuit_breakers[cb_id].remote_sp = server_value
                         cb_changed = True
-                        logger.info(f"Change detected for CB {cb.name} remote: {server_value}")
+                        logger.info(f"Change detected for CB {cb.name} remote SP: {server_value}")
                 
+                # Check if local/remote double point changed
+                if cb.is_local_remote_dp and cb.ioa_local_remote_dp in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[cb.ioa_local_remote_dp]['data']
+                    if previous_values[cb_id]["remote_dp"] != server_value:
+                        previous_values[cb_id]["remote_dp"] = server_value
+                        circuit_breakers[cb_id].remote_dp = server_value
+                        cb_changed = True
+                        logger.info(f"Change detected for CB {cb.name} remote DP: {server_value}")
+
                 if cb_changed:
                     changes_detected = True
             
