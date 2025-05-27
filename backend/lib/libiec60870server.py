@@ -325,6 +325,7 @@ class IEC60870_5_104_server:
 
     def update_ioa(self, ioa, data):
         value = int(float(data))
+        logger.info(f"IOA List: {self.ioa_list}")
         if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
             self.ioa_list[ioa]['data'] = value
             if self.ioa_list[ioa]['event'] == True:
@@ -336,6 +337,7 @@ class IEC60870_5_104_server:
                     self.ioa_list[ioa]['data'] = int(float(data))
                     io = cast(SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 elif self.ioa_list[ioa]['type'] == DoublePointInformation:
+                    logger.info(f"Updating IOA {ioa} with data {data} of type {self.ioa_list[ioa]['type']} and value {value}")
                     self.ioa_list[ioa]['data'] = int(float(data))
                     io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
                 elif self.ioa_list[ioa]['type'] == MeasuredValueShort:

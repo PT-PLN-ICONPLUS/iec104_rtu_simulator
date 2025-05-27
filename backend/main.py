@@ -37,56 +37,7 @@ FASTAPI_PORT = int(os.getenv("FASTAPI_PORT"))
 IEC_SERVER_HOST = os.getenv("IEC_104_SERVER_HOST")
 IEC_SERVER_PORT = int(os.getenv("IEC_104_SERVER_PORT"))
 
-IOA_LIST = {
-    # 100: {
-    #     'type': MeasuredValueScaled,
-    #     'data': 1,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 101: {
-    #     'type': MeasuredValueScaled,
-    #     'data': 22,
-    #     'callback': None,
-    #     'event': True
-    # },
-    # 102: {
-    #     'type': MeasuredValueScaled,
-    #     'data': 42,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 200: {
-    #     'type': SinglePointInformation,
-    #     'data': False,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 300: {
-    #     'type': DoublePointInformation,
-    #     'data': 1,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 301: {
-    #     'type': DoublePointInformation,
-    #     'data': 2,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 5000: {
-    #     'type': DoubleCommand,
-    #     'data': 1,
-    #     'callback': None,
-    #     'event': False
-    # },
-    # 5001: {
-    #     'type': DoubleCommand,
-    #     'data': 2,
-    #     'callback': None,
-    #     'event': False
-    # }
-}
+IOA_LIST = {}
 
 # In-memory storage for items
 circuit_breakers: Dict[str, CircuitBreakerItem] = {}
@@ -156,15 +107,15 @@ def add_circuit_breaker_ioa(item: CircuitBreakerItem):
     IEC_SERVER.add_ioa(item.ioa_control_open, SingleCommand, 0, callback, True)
     IEC_SERVER.add_ioa(item.ioa_control_close, SingleCommand, 0, callback, True)
 
-    if item.is_double_point and item.ioa_cb_status_dp:
+    if item.ioa_cb_status_dp and item.ioa_control_dp:
         IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, callback, True)
         IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, callback, True)
     
     IEC_SERVER.add_ioa(item.ioa_local_remote_sp, SinglePointInformation, 0, callback, True)
-    if item.is_local_remote_dp:
+    if item.ioa_local_remote_dp <= 4 and item.ioa_local_remote_dp >= 0:
         IEC_SERVER.add_ioa(item.ioa_local_remote_dp, DoublePointInformation, 0, callback, True)
     
-    logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
+    logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.id}")
     
     return 0
     
@@ -176,7 +127,7 @@ async def add_circuit_breaker(sid, data):
     result = add_circuit_breaker_ioa(item)
     
     if result != 0:
-        await sio.emit('error', {'message': f'Failed to add circuit breaker IOA {item.ioa_cb_status}'})
+        await sio.emit('error', {'message': f'Failed to add circuit breaker {item.name}'})
         return {"status": "error", "message": f"Failed to add circuit breaker {item.name}"}
     
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
