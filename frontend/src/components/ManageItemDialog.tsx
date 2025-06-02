@@ -76,7 +76,7 @@ export function ManageItemDialog({
         setIOALocalRemoteSP(itemToEdit.ioa_local_remote_sp?.toString() || "");
         setIOALocalRemoteDP(itemToEdit.ioa_local_remote_dp?.toString() || "");
         setIsLocalRemoteDP(itemToEdit.is_local_remote_dp ? "true" : "false");
-        setIsDoublePoint(itemToEdit.is_double_point ? "true" : "false");
+        setIsDoublePoint(itemToEdit.is_cb_double_point ? "true" : "false");
         setAddressDP(itemToEdit.ioa_cb_status_dp?.toString() || "");
         setIoaCbStatusClose(itemToEdit.ioa_cb_status_close?.toString() || "");
         setControlDP(itemToEdit.ioa_control_dp?.toString() || "");
@@ -243,7 +243,7 @@ export function ManageItemDialog({
           newErrors.addressDP = "Double point address/IOA must be a number";
         } else if (
           action === "add" &&
-          items.some((item: any) => item.ioa_data_dp === Number(addressDP))
+          items.some((item: any) => item.ioa_cb_status_dp === Number(addressDP))
         ) {
           newErrors.addressDP = "Double point address/IOA already in use";
         }
@@ -311,11 +311,21 @@ export function ManageItemDialog({
           ioa_local_remote_sp: parseInt(ioaLocalRemoteSP),
           ioa_local_remote_dp: parseInt(ioaLocalRemoteDP),
           is_local_remote_dp: isLocalRemoteDP === "true",
-          is_double_point: isDP,
+          is_cb_double_point: isDP,
           ioa_cb_status_dp: isDP ? parseInt(addressDP) : undefined,
           ioa_control_dp: isDP ? parseInt(controlDP) : undefined,
-          remote: 0,  // Default to local mode
-          interval: parseInt(interval),
+          remote_sp: 0,  // Default to local mode
+          remote_dp: 0,
+          is_sbo: false, // Default value
+          is_dp_mode: false, // Default value
+          is_sdp_mode: false, // Default value
+          is_local_remote_dp_mode: false, // Default value
+          cb_status_open: 0,
+          cb_status_close: 0,
+          cb_status_dp: 0,
+          control_open: 0,
+          control_close: 0,
+          control_dp: 0,
         });
       } else if (itemType === "Telesignal") {
         onSubmit({
@@ -754,20 +764,6 @@ export function ManageItemDialog({
                     </div>
 
                     <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="isLocalRemoteDP" className="w-1/3">
-                        Local/Remote DP
-                      </Label>
-                      <input
-                        type="boolean"
-                        id="isLocalRemoteDP"
-                        className={`border rounded p-2 w-2/3 ${errors.isLocalRemoteDP ? "border-red-500" : ""}`}
-                        value={isLocalRemoteDP}
-                        onChange={(e) => setIsLocalRemoteDP(e.target.value)}
-                      />
-                      {errors.isLocalRemoteDP && <p className="text-red-500 text-xs">{errors.isLocalRemoteDP}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
                       <Label className="w-1/3">Double Point</Label>
                       <RadioGroup
                         value={isDoublePoint}
@@ -812,6 +808,43 @@ export function ManageItemDialog({
                           {errors.controlDP && <p className="text-red-500 text-xs">{errors.controlDP}</p>}
                         </div>
                       </>
+                    )}
+
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label className="w-1/3">Local/Remote DP</Label>
+                      <RadioGroup
+                        value={isLocalRemoteDP}
+                        onValueChange={setIsLocalRemoteDP}
+                        defaultValue="false"
+                      >
+                        <div className="flex flex-row gap-6">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="true" id="lr-dp-yes-edit" />
+                            <Label htmlFor="lr-dp-yes-edit">Yes</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="false" id="lr-dp-no-edit" />
+                            <Label htmlFor="lr-dp-no-edit">No</Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                      {errors.isLocalRemoteDP && <p className="text-red-500 text-xs">{errors.isLocalRemoteDP}</p>}
+                    </div>
+
+                    {isLocalRemoteDP === "true" && (
+                      <div className="flex w-full items-center gap-1.5">
+                        <Label htmlFor="ioaLocalRemoteDP" className="w-1/3">
+                          IOA Local/Remote DP
+                        </Label>
+                        <input
+                          type="number"
+                          id="ioaLocalRemoteDP"
+                          className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemoteDP ? "border-red-500" : ""}`}
+                          value={ioaLocalRemoteDP}
+                          onChange={(e) => setIOALocalRemoteDP(e.target.value)}
+                        />
+                        {errors.ioaLocalRemoteDP && <p className="text-red-500 text-xs">{errors.ioaLocalRemoteDP}</p>}
+                      </div>
                     )}
                   </>
                 )}

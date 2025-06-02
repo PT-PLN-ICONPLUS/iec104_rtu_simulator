@@ -250,9 +250,10 @@ function App() {
       ioa_local_remote_dp: data.ioa_local_remote_dp,
       is_local_remote_dp: data.is_local_remote_dp || false,
       is_sbo: false,
-      is_double_point: data.is_double_point,
-      is_sdp_mode: data.is_sdp_mode,
-
+      is_cb_double_point: data.is_cb_double_point || false,
+      is_dp_mode: data.is_dp_mode || false,
+      is_sdp_mode: data.is_sdp_mode || false,
+      is_local_remote_dp_mode: data.is_local_remote_dp_mode || false,
       remote_sp: 1,
       remote_dp: 2,
       cb_status_open: 0,

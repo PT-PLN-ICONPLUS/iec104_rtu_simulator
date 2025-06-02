@@ -107,12 +107,12 @@ def add_circuit_breaker_ioa(item: CircuitBreakerItem):
     IEC_SERVER.add_ioa(item.ioa_control_open, SingleCommand, 0, callback, True)
     IEC_SERVER.add_ioa(item.ioa_control_close, SingleCommand, 0, callback, True)
 
-    if item.ioa_cb_status_dp and item.ioa_control_dp:
+    if item.is_cb_double_point:
         IEC_SERVER.add_ioa(item.ioa_cb_status_dp, DoublePointInformation, 0, callback, True)
         IEC_SERVER.add_ioa(item.ioa_control_dp, DoubleCommand, 0, callback, True)
     
     IEC_SERVER.add_ioa(item.ioa_local_remote_sp, SinglePointInformation, 0, callback, True)
-    if item.ioa_local_remote_dp <= 4 and item.ioa_local_remote_dp >= 0:
+    if item.is_local_remote_dp:
         IEC_SERVER.add_ioa(item.ioa_local_remote_dp, DoublePointInformation, 0, callback, True)
     
     logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.id}")
@@ -155,7 +155,7 @@ async def update_circuit_breaker(sid, data):
                 IEC_SERVER.remove_ioa(item.ioa_control_close)
                 IEC_SERVER.remove_ioa(item.ioa_local_remote_sp)
                 
-                if item.is_double_point:
+                if item.is_cb_double_point:
                     if item.ioa_cb_status_dp:
                         IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
                     if item.ioa_control_dp:
@@ -211,7 +211,7 @@ async def remove_circuit_breaker(sid, data):
         IEC_SERVER.remove_ioa(item.ioa_cb_status_close)
         IEC_SERVER.remove_ioa(item.ioa_control_open)
         IEC_SERVER.remove_ioa(item.ioa_control_close)
-        if item.is_double_point and item.ioa_cb_status_dp:
+        if item.is_cb_double_point:
             IEC_SERVER.remove_ioa(item.ioa_cb_status_dp)
             IEC_SERVER.remove_ioa(item.ioa_control_dp)
         IEC_SERVER.remove_ioa(item.ioa_local_remote_sp)
@@ -566,7 +566,7 @@ async def monitor_circuit_breaker_changes():
                         "control_dp": None,
                         "remote_sp": None,
                         "remote_dp": None,
-                        "is_local_remote_dp": None
+                        "is_local_remote_dp_mode": None
                     }
                 
                 # Check if single point status values changed
@@ -587,7 +587,7 @@ async def monitor_circuit_breaker_changes():
                         logger.info(f"Change detected for CB {cb.name} status close: {server_value}")
                 
                 # Check if double point status value changed
-                if cb.is_double_point and cb.ioa_cb_status_dp and cb.ioa_cb_status_dp in IEC_SERVER.ioa_list:
+                if cb.is_cb_double_point and cb.ioa_cb_status_dp and cb.ioa_cb_status_dp in IEC_SERVER.ioa_list:
                     server_value = IEC_SERVER.ioa_list[cb.ioa_cb_status_dp]['data']
                     if previous_values[cb_id]["cb_status_dp"] != server_value:
                         previous_values[cb_id]["cb_status_dp"] = server_value
@@ -612,7 +612,7 @@ async def monitor_circuit_breaker_changes():
                         cb_changed = True
                         logger.info(f"Change detected for CB {cb.name} control close: {server_value}")
                 
-                if cb.is_double_point and cb.ioa_control_dp and cb.ioa_control_dp in IEC_SERVER.ioa_list:
+                if cb.is_cb_double_point and cb.ioa_control_dp and cb.ioa_control_dp in IEC_SERVER.ioa_list:
                     server_value = IEC_SERVER.ioa_list[cb.ioa_control_dp]['data']
                     if previous_values[cb_id]["control_dp"] != server_value:
                         previous_values[cb_id]["control_dp"] = server_value

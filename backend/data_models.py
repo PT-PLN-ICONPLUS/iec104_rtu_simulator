@@ -15,9 +15,14 @@ class CircuitBreakerItem(BaseModel):
     ioa_local_remote_dp: int  # Local/Remote Double
     
     is_sbo: bool
-    is_double_point: bool
+    
+    is_cb_double_point: bool
+    
+    is_dp_mode: Optional[bool] = False
     is_sdp_mode: Optional[bool] = False
-    is_local_remote_dp: bool = False
+    
+    is_local_remote_dp: Optional[bool] = False
+    is_local_remote_dp_mode: Optional[bool] = False
     
     remote_sp: int = 0
     remote_dp: int = 0

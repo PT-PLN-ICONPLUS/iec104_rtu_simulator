@@ -13,12 +13,12 @@ function CircuitBreaker(item: CircuitBreakerItem & {
 }) {
   // State variables based on your data structure
   const [isSBO, setIsSBO] = useState(item.is_sbo);
-  const [isDPMode, setIsDPMode] = useState(item.is_double_point);
+  const [isDPMode, setIsDPMode] = useState(item.is_dp_mode || false);
   const [isSDPMode, setIsSDPMode] = useState(item.is_sdp_mode || false);
 
   const [isRemoteSP, setIsRemoteSP] = useState(item.remote_sp);
   const [isRemoteDP, setIsRemoteDP] = useState(item.remote_dp);
-  const [isLocalRemoteDP, setIsLocalRemoteDP] = useState(item.is_local_remote_dp || false);
+  const [isLocalRemoteDP, setIsLocalRemoteDP] = useState(item.is_local_remote_dp_mode || false);
 
   const [cbStatusOpen, setCbStatusOpen] = useState(item.cb_status_open);
   const [cbStatusClose, setCbStatusClose] = useState(item.cb_status_close);
@@ -39,9 +39,9 @@ function CircuitBreaker(item: CircuitBreakerItem & {
         setCbStatusDP(filtered[0].cb_status_dp);
         setIsRemoteSP(filtered[0].remote_sp);
         setIsRemoteDP(filtered[0].remote_dp);
-        setIsLocalRemoteDP(filtered[0].is_local_remote_dp || false);
+        setIsLocalRemoteDP(filtered[0].is_local_remote_dp_mode || false);
         setIsSBO(filtered[0].is_sbo);
-        setIsDPMode(filtered[0].is_double_point);
+        setIsDPMode(filtered[0].is_dp_mode);
         setIsSDPMode(filtered[0].is_sdp_mode || false);
       }
     }
@@ -216,7 +216,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
     socket.emit('update_circuit_breaker', {
       id: item.id,
       remote_sp: newRemoteSP,
-      is_local_remote_dp: false
+      is_local_remote_dp_mode: false
     });
   };
 
@@ -227,7 +227,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
     socket.emit('update_circuit_breaker', {
       id: item.id,
       remote_dp: newRemoteDP,
-      is_local_remote_dp: true
+      is_local_remote_dp_mode: true
     });
   };
 
@@ -246,7 +246,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
 
     socket.emit('update_circuit_breaker', {
       id: item.id,
-      is_double_point: false,
+      is_dp_mode: false,
       is_sdp_mode: false
     });
   };
@@ -257,7 +257,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
 
     socket.emit('update_circuit_breaker', {
       id: item.id,
-      is_double_point: true,
+      is_dp_mode: true,
       is_sdp_mode: false
     });
   };
@@ -268,7 +268,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
 
     socket.emit('update_circuit_breaker', {
       id: item.id,
-      is_double_point: true,
+      is_dp_mode: true,
       is_sdp_mode: true
     });
   };
@@ -288,7 +288,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
       socket.emit('update_circuit_breaker', {
         id: item.id,
         remote_sp: newIsRemoteSP,
-        is_local_remote_dp: false
+        is_local_remote_dp_mode: false
       });
     } else {
       setIsLocalRemoteDP(true);
@@ -298,7 +298,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
       socket.emit('update_circuit_breaker', {
         id: item.id,
         remote_dp: newIsRemoteDP,
-        is_local_remote_dp: true
+        is_local_remote_dp_mode: true
       });
     }
   };
@@ -365,7 +365,7 @@ function CircuitBreaker(item: CircuitBreakerItem & {
               size="sm"
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(isLocalRemoteDP && isRemoteDP === 2) || (!isLocalRemoteDP && isRemoteSP === 1) || item.isEditing ||
-                  (isDPMode && (cbStatusDP === 0 || cbStatusDP === 3)) ? 'opacity-50 cursor-not-allowed' : ''
+                (isDPMode && (cbStatusDP === 0 || cbStatusDP === 3)) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               disabled={(isLocalRemoteDP && isRemoteDP === 2) || (!isLocalRemoteDP && isRemoteSP === 1) || item.isEditing ||
                 (isDPMode && (cbStatusDP === 0 || cbStatusDP === 3))}
