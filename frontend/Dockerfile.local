@@ -1,0 +1,21 @@
+# Use the official Node.js image as the base image
+FROM node:22 AS builder
+
+# Copy package.json and package-lock.json
+COPY package*.json /srv/frontend/
+
+# Set the working directory
+WORKDIR /srv/frontend
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application code
+COPY . /srv/frontend
+
+RUN npm run build
+
+# Expose the port the app runs on
+EXPOSE 4051
+
+CMD ["npm", "run" ,"preview", "--", "--host", "--port", "4051"]
