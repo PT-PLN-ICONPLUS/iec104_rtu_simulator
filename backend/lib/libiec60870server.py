@@ -325,7 +325,7 @@ class IEC60870_5_104_server:
 
     def update_ioa(self, ioa, data):
         value = int(float(data))
-        logger.info(f"IOA List: {self.ioa_list}")
+        # logger.info(f"IOA List: {self.ioa_list}")
         if ioa in self.ioa_list and value != self.ioa_list[ioa]['data']: #check if value is different, else ignore
             self.ioa_list[ioa]['data'] = value
             if self.ioa_list[ioa]['event'] == True:
@@ -379,7 +379,7 @@ class IEC60870_5_104_server:
                     self.update_ioa(cb.ioa_control_open, 1)  # Set control open to 1
                     self.update_ioa(cb.ioa_cb_status, 1)  # Set status open to 1
                     self.update_ioa(cb.ioa_cb_status_close, 0)  # Set status close to 0
-                    if cb.is_double_point and cb.ioa_cb_status_dp:
+                    if cb.is_dp_mode and cb.ioa_cb_status_dp:
                         self.update_ioa(cb.ioa_cb_status_dp, 1)  # Set double point status to 1 (open)
                     break
                 
@@ -390,12 +390,12 @@ class IEC60870_5_104_server:
                     self.update_ioa(cb.ioa_control_close, 1)
                     self.update_ioa(cb.ioa_cb_status, 0)  # Set status open to 0
                     self.update_ioa(cb.ioa_cb_status_close, 1)  # Set status close to 1
-                    if cb.is_double_point and cb.ioa_cb_status_dp:
+                    if cb.is_dp_mode and cb.ioa_cb_status_dp:
                         self.update_ioa(cb.ioa_cb_status_dp, 2)  # Set double point status to 2 (closed)
                     break
                 
                 # Check if this is a double point control command
-                elif cb.is_double_point and cb.ioa_control_dp and ioa == cb.ioa_control_dp:
+                elif cb.is_dp_mode and cb.ioa_control_dp and ioa == cb.ioa_control_dp:
                     logger.info(f"Double point control command received for IOA {ioa} with value {value}")
                     if value == 1:  # Open command in double point
                         self.update_ioa(cb.ioa_control_dp, 1)
