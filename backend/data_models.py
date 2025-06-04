@@ -16,12 +16,12 @@ class CircuitBreakerItem(BaseModel):
     
     is_sbo: bool
     
-    is_cb_double_point: bool
+    has_double_point: bool
     
     is_dp_mode: Optional[bool] = False
     is_sdp_mode: Optional[bool] = False
     
-    is_local_remote_dp: Optional[bool] = False
+    has_local_remote_dp: Optional[bool] = True
     is_local_remote_dp_mode: Optional[bool] = False
     
     remote_sp: int = 0
