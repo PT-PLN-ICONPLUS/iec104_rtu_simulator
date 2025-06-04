@@ -430,7 +430,7 @@ function App() {
       <div className="flex justify-between items-center py-3 px-4 border-b">
         <div className="flex items-center space-x-2">
           <img src="/iec.ico" alt="IEC Icon" className="w-6 h-6" />
-          <p className="text-2xl font-bold">IEC104 Server Simulator</p>
+          <p className="text-2xl font-bold">IEC104 RTU Simulator</p>
         </div>
         <div className="flex space-x-2">
           <TooltipProvider>
