@@ -1,4 +1,4 @@
-# Iconics IEC104 Server Simulator (Dynamic Version)
+# Iconics IEC104 RTU Simulator (Dynamic Version)
 
 When using your local computer, there is only one way to run this project and it's using **Docker**. The only reason it's because it needs a library from [MZ-automation](https://github.com/mz-automation/lib60870) that's run on UNIX based machine only.
 
