@@ -478,8 +478,8 @@ async def update_tap_changer(sid, data):
         for item_id, item in list(tap_changers.items()):
             if id == item_id:
                 # Check if IOA is being updated
-                old_ioa = item.ioa
-                new_ioa = data.get('ioa')
+                old_ioa = item.ioa_value
+                new_ioa = data.get('ioa_value')
                 
                 # Handle IOA update if needed
                 if new_ioa is not None and old_ioa != new_ioa:

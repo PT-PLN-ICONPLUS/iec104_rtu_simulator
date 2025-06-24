@@ -368,6 +368,8 @@ function App() {
       socket.emit('add_tap_changer', newItem, (response: unknown) => {
         console.log('Add tap changer response:', response);
       });
+
+      setTapChangers((prev) => [...prev, newItem]);
     }
   };
 
@@ -421,23 +423,38 @@ function App() {
     reader.readAsText(file);
   };
 
-  const handleDragEndCircuitBreakers = (event: DragEndEvent) => {
+  const handleDragEndCombined = (event: any) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    // Check if the dragged item is a circuit breaker
+    const isCircuitBreaker = circuitBreakers.some(item => item.id === active.id);
+    const isTapChanger = tapChangers.some(item => item.id === active.id);
+
+    if (isCircuitBreaker) {
+      // Handle circuit breaker reordering
       setCircuitBreakers((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
 
-        const newItems = arrayMove(items, oldIndex, newIndex);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          return arrayMove(items, oldIndex, newIndex);
+        }
+        return items;
+      });
+    } else if (isTapChanger) {
+      // Handle tap changer reordering
+      setTapChangers((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
 
-        // Emit the new order to backend if needed
-        socket.emit('update_order', {
-          type: 'circuit_breakers',
-          items: newItems.map(item => item.id)
-        });
-
-        return newItems;
+        if (oldIndex !== -1 && newIndex !== -1) {
+          return arrayMove(items, oldIndex, newIndex);
+        }
+        return items;
       });
     }
   };
@@ -476,27 +493,6 @@ function App() {
         // Emit the new order to backend if needed
         socket.emit('update_order', {
           type: 'telemetries',
-          items: newItems.map(item => item.id)
-        });
-
-        return newItems;
-      });
-    }
-  };
-
-  const handleDragEndTapChangers = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setTapChangers((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-
-        const newItems = arrayMove(items, oldIndex, newIndex);
-
-        // Emit the new order to backend if needed
-        socket.emit('update_order', {
-          type: 'tap_changers',
           items: newItems.map(item => item.id)
         });
 
@@ -622,10 +618,10 @@ function App() {
           <div className="flex-1 overflow-y-auto">
             <DndContext
               collisionDetection={closestCenter}
-              onDragEnd={handleDragEndCircuitBreakers}
+              onDragEnd={handleDragEndCombined}
             >
               <SortableContext
-                items={circuitBreakers.map(item => item.id)}
+                items={[...circuitBreakers.map(item => item.id), ...tapChangers.map(item => item.id)]}
                 strategy={verticalListSortingStrategy}
               >
                 {circuitBreakers.map(item => (
@@ -643,17 +639,7 @@ function App() {
                     />
                   </SortableItem>
                 ))}
-              </SortableContext>
-            </DndContext>
 
-            <DndContext
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEndTapChangers}
-            >
-              <SortableContext
-                items={tapChangers.map(item => item.id)}
-                strategy={verticalListSortingStrategy}
-              >
                 {tapChangers.map(item => (
                   <SortableItem
                     key={item.id}

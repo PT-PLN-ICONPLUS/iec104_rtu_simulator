@@ -35,12 +35,14 @@ function TapChanger(item: TapChangerItem & {
   const handleValue = (type: string) => {
     let newValue = 0;
 
-    if (value < item.value_low_limit || value > item.value_high_limit) {
-      newValue = value;
-    } else if (type == "+") {
+    if (type === "+") {
       newValue = value + 1;
-    } else if (type == "-") {
+    } else if (type === "-") {
       newValue = value - 1;
+    }
+
+    if (newValue < item.value_low_limit || newValue > item.value_high_limit) {
+      newValue = value;
     }
 
     setValue(newValue);
@@ -79,16 +81,16 @@ function TapChanger(item: TapChangerItem & {
         <div className="flex flex-col my-2 mx-6 gap-2">
           {/* Display Value */}
           <div className="flex flex-row">
-            <div className="flex w-full justify-around text-3xl">
+            <div className="flex w-full justify-around text-6xl">
               <p>{value}</p>
             </div>
           </div>
 
           {/* Raise Lower Buttons */}
-          <div className="flex flex-row gap-2 justify-around my-1">
+          <div className="flex flex-row gap-4 justify-around my-1">
             <Button
               onClick={() => handleValue("+")}
-              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-green-600 border-2 border-black ${isRemote || item.isEditing ? 'opacity-50' : ''
+              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-green-600 border-2 border-black ${(isRemote === 2) || item.isEditing ? 'opacity-50' : ''
                 }`}
               disabled={isRemote === 2 || item.isEditing}
             >
@@ -97,53 +99,35 @@ function TapChanger(item: TapChangerItem & {
 
             <Button
               onClick={() => handleValue("-")}
-              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-red-600 border-2 border-black ${isRemote || item.isEditing ? 'opacity-50' : ''
+              className={`text-xs w-12 h-12 rounded-full flex items-center justify-center bg-red-600 border-2 border-black ${(isRemote === 2) || item.isEditing ? 'opacity-50' : ''
                 }`}
               disabled={isRemote === 2 || item.isEditing}
             >
               Lower
             </Button>
           </div>
-
-          {/* Auto Manual Buttons */}
-          <div className="flex flex-row justify-around gap-2 text-sm">
-            <Button
-              size="sm"
-              variant="outline"
-              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${isRemote === 2 || item.isEditing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              disabled={isRemote === 2 || item.isEditing}
-              onClick={handleAutoMode} // Set to invalid 0
-            >
-              Invalid 0
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${isRemote === 2 || item.isEditing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              disabled={isRemote === 2 || item.isEditing}
-              onClick={handleAutoMode} // Set to invalid 3
-            >
-              Invalid 3
-            </Button>
-          </div>
         </div>
 
-        <div className="flex flex-col justify-center gap-3">
-          <div className="text-sm flex flex-col">
-            <p>IOA Value: <span className="font-bold">{item.ioa_value}</span></p>
-            <p>IOA Status Raise Lower: <span className="font-bold">{item.ioa_status_raise_lower}</span></p>
-            <p>IOA Command Raise Lower: <span className="font-bold">{item.ioa_command_raise_lower}</span></p>
-            <p>IOA Status Auto Manual: <span className="font-bold">{item.ioa_status_auto_manual}</span></p>
-            <p>IOA Command Auto Manual: <span className="font-bold">{item.ioa_command_auto_manual}</span></p>
-            <p>Value High Limit: <span className="font-bold">{item.value_high_limit}</span></p>
-            <p>Value Low Limit: <span className="font-bold">{item.value_low_limit}</span></p>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-row gap-4 px-4">
+            <div className="text-sm flex flex-col">
+              <p>IOA Status Raise Lower: <span className="font-bold">{item.ioa_status_raise_lower}</span></p>
+              <p>IOA Command Raise Lower: <span className="font-bold">{item.ioa_command_raise_lower}</span></p>
+              <p>IOA Status Auto Manual: <span className="font-bold">{item.ioa_status_auto_manual}</span></p>
+              <p>IOA Command Auto Manual: <span className="font-bold">{item.ioa_command_auto_manual}</span></p>
+            </div>
+
+            <div className="text-sm flex flex-col">
+              <p>IOA Value: <span className="font-bold">{item.ioa_value}</span></p>
+              <p>Value Low Limit: <span className="font-bold">{item.value_low_limit}</span></p>
+              <p>Value High Limit: <span className="font-bold">{item.value_high_limit}</span></p>
+              <p>IOA Local Remote:<span className="font-bold"> {item.ioa_local_remote}</span></p>
+            </div>
           </div>
 
-          {/* Local/Remote switch */}
+          {/* Local/Remote switch and Auto*/}
           {item.isEditing ? (
-            <div className="flex flex-row gap-2 justify-center">
+            <div className="flex flex-row gap-2 items-center justify-center">
               <Button
                 size="sm"
                 className={`bg-white text-blue-500 rounded w-9 h-9 border-2 border-black hover:bg-gray-300}`}
@@ -160,20 +144,24 @@ function TapChanger(item: TapChangerItem & {
               </Button>
             </div>
           ) : (
-            <div className="flex flex-row gap-4 items-center">
+            <div className="flex flex-row gap-4 items-center justify-center">
               <span className={`font-bold ${isRemote !== 2 ? 'text-red-500' : ''}`}>L</span>
               <Switch
                 id={`location-mode-${item.id}`}
-                checked={isRemote === 1}
+                checked={isRemote === 2}
                 onCheckedChange={setLR}
                 disabled={item.isEditing}
               />
               <span className={`font-bold ${isRemote === 2 ? 'text-red-500' : ''}`}>R</span>
+              <Button
+                className={`${auto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${auto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
+                onClick={handleAutoMode}
+                disabled={item.isEditing || isRemote === 2}
+              >
+                A
+              </Button>
             </div>
           )}
-          <div>
-            <p className="text-sm">IOA Local Remote:<span className="font-bold"> {item.ioa_local_remote}</span></p>
-          </div>
         </div>
       </div>
     </div >
