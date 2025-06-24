@@ -54,7 +54,8 @@ IEC_SERVER = IEC60870_5_104_server(
     socketio_server=sio,
     circuit_breakers=circuit_breakers,
     telesignals=telesignals,
-    telemetries=telemetries
+    telemetries=telemetries,
+    tap_changers=tap_changers, 
 )
 
 app.add_middleware(
@@ -73,6 +74,7 @@ async def connect(sid, environ):
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
     await sio.emit('tele_signals', [item.model_dump() for item in telesignals.values()], room=sid)
     await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
+    await sio.emit('tap_changer', [item.model_dump() for item in tap_changers.values()], room=sid   )
 
 @sio.event
 async def disconnect(sid):

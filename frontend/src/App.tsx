@@ -3,7 +3,7 @@ import socket from './socket';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
-import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
+import { CircuitBreakerItem, TapChangerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -17,20 +17,22 @@ import { PiExportBold } from "react-icons/pi";
 import { ManageItemDialog } from './components/ManageItemDialog';
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
 import { TbDragDrop } from "react-icons/tb";
+import { TapChanger } from './components/TapChangerItem';
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
   const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
+  const [tapChangers, setTapChangers] = useState<TapChangerItem[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null>(null);
   const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null } | null>(null);
 
   useEffect(() => {
     // Emit 'get_initial_data' to request initial data
@@ -41,6 +43,7 @@ function App() {
       circuit_breakers: CircuitBreakerItem[];
       telesignals: TeleSignalItem[];
       telemetries: TelemetryItem[];
+      tap_changers: TapChangerItem[]; // Optional, if you have tap changers
     }) => {
       console.log('Initial data received:', response);
 
@@ -48,6 +51,7 @@ function App() {
       setCircuitBreakers(response.circuit_breakers || []);
       setTeleSignals(response.telesignals || []);
       setTeleMetries(response.telemetries || []);
+      setTapChangers(response.tap_changers || []);
     });
 
     // Handle errors
@@ -79,10 +83,16 @@ function App() {
       setTeleMetries(data);
     });
 
+    socket.on('tap_changers', (data: TapChangerItem[]) => {
+      console.log('Received tap changers update:', data);
+      setTapChangers(data);
+    });
+
     return () => {
       socket.off('circuit_breakers');
       socket.off('telesignals');
       socket.off('telemetries');
+      socket.off('tap_changers');
     };
   }, []);
 
@@ -107,15 +117,17 @@ function App() {
     setSelectedItemToEdit(null);
   };
 
-  const handleEditItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+  const handleEditItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer') => {
     // Find the item to edit
     let itemToEdit;
     if (type === 'circuit_breaker') {
       itemToEdit = circuitBreakers.find(item => item.id === id);
     } else if (type === 'telesignal') {
       itemToEdit = teleSignals.find(item => item.id === id);
-    } else {
+    } else if (type === 'telemetry') {
       itemToEdit = teleMetries.find(item => item.id === id);
+    } else {
+      itemToEdit = tapChangers.find(item => item.id === id);
     }
 
     if (itemToEdit) {
@@ -126,7 +138,7 @@ function App() {
     }
   };
 
-  const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+  const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer') => {
     // Set up the delete dialog with the item's data
     setItemToDelete({ id, type });
     setDeleteDialogOpen(true);
@@ -139,8 +151,10 @@ function App() {
       return circuitBreakers.find(item => item.id === itemToDelete.id)?.name || "";
     } else if (itemToDelete.type === 'telesignal') {
       return teleSignals.find(item => item.id === itemToDelete.id)?.name || "";
-    } else {
+    } else if (itemToDelete.type === 'telemetry') {
       return teleMetries.find(item => item.id === itemToDelete.id)?.name || "";
+    } else {
+      return tapChangers.find(item => item.id === itemToDelete.id)?.name || "";
     }
   };
 
@@ -151,8 +165,10 @@ function App() {
         socket.emit('remove_circuit_breaker', { id: itemToDelete.id });
       } else if (itemToDelete.type === 'telesignal') {
         socket.emit('remove_telesignal', { id: itemToDelete.id });
-      } else {
+      } else if (itemToDelete.type === 'telemetry') {
         socket.emit('remove_telemetry', { id: itemToDelete.id });
+      } else {
+        socket.emit('remove_tap_changer', { id: itemToDelete.id });
       }
     }
     setDeleteDialogOpen(false);
@@ -165,17 +181,19 @@ function App() {
     setItemToDelete(null);
   };
 
-  const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+  const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem) => {
     if ('ioa_cb_status' in data) {
       addCircuitBreaker(data as CircuitBreakerItem);
     } else if ('ioa' in data && !('unit' in data)) {
       addTeleSignal(data as TeleSignalItem);
     } else if ('ioa' in data && 'unit' in data) {
       addTelemetry(data as TelemetryItem);
+    } else {
+      addTapChanger(data as TapChangerItem);
     }
   };
 
-  const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+  const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem) => {
     if ('ioa_cb_status' in data) {
       console.log("CB!");
       console.log(data);
@@ -230,6 +248,22 @@ function App() {
 
         // Update the local state
         setTeleMetries(prev => prev.map(item =>
+          item.id === data.id ? updatedItem : item
+        ));
+      }
+    } else {
+      const originalItem = tapChangers.find(item => item.id === data.id);
+      if (originalItem) {
+        // Merge the original item with the updated data
+        const updatedItem = { ...originalItem, ...data };
+
+        console.log(updatedItem);
+
+        // Send the complete updated item to the server
+        socket.emit('update_tap_changer', updatedItem);
+
+        // Update the local state
+        setTapChangers(prev => prev.map(item =>
           item.id === data.id ? updatedItem : item
         ));
       }
@@ -312,6 +346,31 @@ function App() {
     }
   };
 
+  const addTapChanger = (data: TapChangerItem) => {
+    const newItem: TapChangerItem = {
+      id: Date.now().toString(),
+      name: data.name,
+      ioa_value: data.ioa_value,
+      value: data.value,
+      value_high_limit: data.value_high_limit,
+      value_low_limit: data.value_low_limit,
+      interval: data.interval,
+      auto_mode: false,
+      ioa_status_auto_manual: data.ioa_status_auto_manual,
+      ioa_command_auto_manual: data.ioa_command_auto_manual,
+      ioa_command_raise_lower: data.ioa_command_raise_lower,
+      ioa_status_raise_lower: data.ioa_status_raise_lower,
+      is_local_remote: 1,
+      ioa_local_remote: 0
+    };
+
+    if (socket) {
+      socket.emit('add_tap_changer', newItem, (response: unknown) => {
+        console.log('Add tap changer response:', response);
+      });
+    }
+  };
+
   const exportData = () => {
     socket.emit('export_data');
 
@@ -319,7 +378,7 @@ function App() {
       console.log('Exported data:', data);
 
       // Validate the structure of the data
-      if (!data.circuit_breakers || !data.telesignals || !data.telemetries) {
+      if (!data.circuit_breakers || !data.telesignals || !data.telemetries || !data.tap_changers) {
         alert('Invalid data structure received from the server');
         return;
       }
@@ -417,6 +476,27 @@ function App() {
         // Emit the new order to backend if needed
         socket.emit('update_order', {
           type: 'telemetries',
+          items: newItems.map(item => item.id)
+        });
+
+        return newItems;
+      });
+    }
+  };
+
+  const handleDragEndTapChangers = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setTapChangers((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Emit the new order to backend if needed
+        socket.emit('update_order', {
+          type: 'tap_changers',
           items: newItems.map(item => item.id)
         });
 
@@ -534,10 +614,10 @@ function App() {
 
       <div className="flex flex-row w-full">
 
-        {/* Circuit Breaker Section */}
+        {/* Circuit Breaker and Tap Changer Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           <div className="flex flex-row border-b-2 justify-center">
-            <h2 className="text-xl font-semibold m-2">Circuit Breakers</h2>
+            <h2 className="text-xl font-semibold m-2">Circuit Breakers & Tap Changers</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
             <DndContext
@@ -560,6 +640,32 @@ function App() {
                       isEditing={isEditing}
                       onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
                       onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
+                    />
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndTapChangers}
+            >
+              <SortableContext
+                items={tapChangers.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {tapChangers.map(item => (
+                  <SortableItem
+                    key={item.id}
+                    id={item.id}
+                    isDraggingEnabled={isDragging}
+                  >
+                    <TapChanger
+                      key={item.id}
+                      {...item}
+                      isEditing={isEditing}
+                      onEdit={(id) => handleEditItem(id, 'tap_changer')}
+                      onDelete={(id) => handleDeleteItem(id, 'tap_changer')}
                     />
                   </SortableItem>
                 ))}

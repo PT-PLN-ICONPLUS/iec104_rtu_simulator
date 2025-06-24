@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class IEC60870_5_104_server:
-    def __init__(self, host, port, ioa_list=None, socketio_server=None, circuit_breakers=None, telesignals=None, telemetries=None):
+    def __init__(self, host, port, ioa_list=None, socketio_server=None, circuit_breakers=None, telesignals=None, telemetries=None, tap_changers=None):
         self.clockSyncHandler = CS101_ClockSynchronizationHandler(self.clock)
         self.interrogationHandler = CS101_InterrogationHandler(self.GI_h)
         self.asduHandler = CS101_ASDUHandler(self.ASDU_h)
@@ -49,6 +49,7 @@ class IEC60870_5_104_server:
         self.circuit_breakers = circuit_breakers
         self.telesignals = telesignals
         self.telemetries = telemetries
+        self.tap_changers = tap_changers
     
     def start(self):
         logger.info("Starting 104 server")
@@ -408,6 +409,24 @@ class IEC60870_5_104_server:
                         self.update_ioa(cb.ioa_cb_status_close, 1)
                         self.update_ioa(cb.ioa_cb_status_dp, 2)
                     break
+                
+        elif self.tap_changers:
+            for tc in self.tap_changers.values():
+                if ioa == tc.ioa_local_remote:
+                    if value == 1:
+                        logger.info(f"Tap changer {tc.name} set to local mode")
+                        self.update_ioa(tc.ioa_local_remote, 1)
+                    elif value == 0:
+                        logger.info(f"Tap changer {tc.name} set to remote mode")
+                        self.update_ioa(tc.ioa_local_remote, 0)
+                if ioa == tc.ioa_command_raise_lower:
+                    if value == 1:
+                        logger.info(f"Tap changer {tc.name} command to raise tap position")
+                        self.update_ioa(tc.ioa_command_raise_lower, 1)
+                    elif value == 2:
+                        logger.info(f"Tap changer {tc.name} command to lower tap position")
+                        self.update_ioa(tc.ioa_command_raise_lower, 2) 
+                    
         return 0
     
     def remove_ioa(self, ioa):

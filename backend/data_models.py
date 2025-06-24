@@ -51,12 +51,32 @@ class TelemetryItem(BaseModel):
     min_value: float
     max_value: float
     interval: int = 2
-    auto_mode: bool = True    
+    auto_mode: bool = True
+    
+class TapChangerItem(BaseModel):
+    id: str
+    name: str
+    ioa_value: int
+    value: int
+    value_high_limit: int
+    value_low_limit: int
+    
+    ioa_status_raise_lower: int  # 1: lower, 2: raise, 0: neutral
+    ioa_command_raise_lower: int
+    
+    interval: int = 1
+    auto_mode: int = 2  # 1: manual, 2: auto
+    ioa_status_auto_manual: int
+    ioa_command_auto_manual: int
+    
+    is_local_remote: int = 1
+    ioa_local_remote: int    
 
 
     # Export all classes
     __all__ = [
       'CircuitBreakerItem',
       'TeleSignalItem',
-      'TelemetryItem'
+      'TelemetryItem',
+      'TapChangerItem'
     ]

@@ -52,4 +52,21 @@ export interface TelemetryItem {
   auto_mode: boolean; // true is auto, false is manual
 }
 
-export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem;
+export interface TapChangerItem {
+  id: string;
+  name: string;
+  ioa_value: number;
+  value: number;
+  value_high_limit: number;
+  value_low_limit: number;
+  ioa_status_raise_lower: number;
+  ioa_command_raise_lower: number;
+  interval: number;
+  auto_mode: boolean;
+  ioa_status_auto_manual: number;
+  ioa_command_auto_manual: number;
+  is_local_remote: number;
+  ioa_local_remote: number;
+}
+
+export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem;
