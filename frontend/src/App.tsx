@@ -29,7 +29,7 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null>(null);
-  const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
+  const [selectedItemToEdit, setSelectedItemToEdit] = useState<unknown>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null } | null>(null);

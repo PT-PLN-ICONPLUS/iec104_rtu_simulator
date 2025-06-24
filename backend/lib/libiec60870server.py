@@ -316,10 +316,10 @@ class IEC60870_5_104_server:
             return True
         return False
 
-    def add_ioa(self, number, type = MeasuredValueScaled, data = 0, callback = None, event = False):
-        logger.info(f"Adding IOA {number} with type {type} and data {data}")
-        if not number in self.ioa_list:
-            self.ioa_list[int(number)] = { 'type': type, 'data': data, 'callback': callback, 'event': event }
+    def add_ioa(self, ioa, type = MeasuredValueScaled, data = 0, callback = None, event = False):
+        logger.info(f"Adding IOA {ioa} with type {type} and data {data}")
+        if not ioa in self.ioa_list:
+            self.ioa_list[int(ioa)] = { 'type': type, 'data': data, 'callback': callback, 'event': event }
             return 0
         else:
             return -1

@@ -12,7 +12,7 @@ import os
 from lib.libiec60870server import IEC60870_5_104_server
 import logging
 import random
-from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
+from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem, TapChangerItem
 from lib.lib60870 import (
     SinglePointInformation,
     MeasuredValueScaled,
@@ -43,6 +43,7 @@ IOA_LIST = {}
 circuit_breakers: Dict[str, CircuitBreakerItem] = {}
 telesignals: Dict[str, TeleSignalItem] = {}
 telemetries: Dict[str, TelemetryItem] = {}
+tap_changers: Dict[str, TapChangerItem] = {}
 
 app = FastAPI()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
@@ -74,7 +75,7 @@ async def connect(sid, environ):
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
     await sio.emit('tele_signals', [item.model_dump() for item in telesignals.values()], room=sid)
     await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
-    await sio.emit('tap_changer', [item.model_dump() for item in tap_changers.values()], room=sid   )
+    await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
 
 @sio.event
 async def disconnect(sid):
@@ -88,6 +89,7 @@ async def get_initial_data(sid):
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
             "telesignals": [item.model_dump() for item in telesignals.values()],
             "telemetries": [item.model_dump() for item in telemetries.values()],
+            "tap_changers": [item.model_dump() for item in tap_changers.values()],
         }
         await sio.emit('get_initial_data_response', data, room=sid)
         logger.info(f"Initial data sent to {sid}. Data: {data}")
@@ -435,6 +437,76 @@ async def remove_telemetry(sid, data):
     return {"status": "error", "message": "Telemetry not found"}
     
 @sio.event
+async def add_tap_changer(sid, data):
+    item = TapChangerItem(**data)
+    tap_changers[item.id] = item
+
+    # Add IOAs to the IEC server
+    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, item.value, None, False)
+    if result == 0:
+        # Initialize with auto_mode disabled
+        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
+        logger.info(f"Added tap changer: {item.name} with IOA {item.ioa}")
+    else:
+        await sio.emit('error', {'message': f'Failed to add tap changer IOA {item.ioa}'})
+        
+@sio.event
+async def update_tap_changer(sid, data):
+    id = data.get('id')
+    
+    if id:
+        for item_id, item in list(tap_changers.items()):
+            if id == item_id:
+                # Check if IOA is being updated
+                old_ioa = item.ioa
+                new_ioa = data.get('ioa')
+                
+                # Handle IOA update if needed
+                if new_ioa is not None and old_ioa != new_ioa:
+                    # Remove old IOA
+                    IEC_SERVER.remove_ioa(old_ioa)
+                    
+                    # Add new IOA
+                    result = IEC_SERVER.add_ioa(new_ioa, MeasuredValueScaled, item.value, None, False)
+                    if result != 0:
+                        await sio.emit('error', {'message': f'Failed to update tap changer IOA to {new_ioa}'})
+                        return {"status": "error", "message": f"Failed to update IOA to {new_ioa}"}
+                    
+                    # Update auto_mode for new IOA
+                    IEC_SERVER.ioa_list[new_ioa]['auto_mode'] = item.auto_mode
+                
+                # Update all fields that are provided in the data
+                for key, value in data.items():
+                    if hasattr(tap_changers[item_id], key) and key != 'id':
+                        setattr(tap_changers[item_id], key, value)
+                        
+                        # Update IEC server for the IOA value
+                        if key == 'value':
+                            IEC_SERVER.update_ioa(item.ioa, value)
+                
+                logger.info(f"Updated tap changer: {item.name}, data: {tap_changers[item_id].model_dump()}")
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+                return {"status": "success"}
+    return {"status": "error", "message": "Tap changer not found"}
+
+
+@sio.event
+async def remove_tap_changer(sid, data):
+    item_id = data.get('id')
+    if item_id and item_id in tap_changers:
+        item = tap_changers.pop(item_id)
+        
+        # Remove the IOA from the IEC server
+        result = IEC_SERVER.remove_ioa(item.ioa)
+        if result != 0:
+            await sio.emit('error', {'message': f'Failed to remove tap changer IOA {item.ioa}'})
+        
+        logger.info(f"Removed tap changer: {item.name}")
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
+        return {"status": "success", "message": f"Removed tap changer {item.name}"}
+    return {"status": "error", "message": "Tap changer not found"}
+
+@sio.event
 async def export_data(sid):
     """Export all data as JSON via socket."""
     try:
@@ -454,6 +526,7 @@ async def export_data(sid):
             "circuit_breakers": circuit_breaker_data,
             "telesignals": [item.model_dump() for item in telesignals.values()],
             "telemetries": [item.model_dump() for item in telemetries.values()],
+            "tap_changers": [item.model_dump() for item in tap_changers.values()],
         }
         await sio.emit('export_data_response', data, room=sid)
     except Exception as e:
@@ -469,6 +542,7 @@ async def import_data(sid, data):
         circuit_breakers.clear()
         telesignals.clear()
         telemetries.clear()
+        tap_changers.clear()
 
         # Populate with new data
         for cb in data.get("circuit_breakers", []):
@@ -517,11 +591,17 @@ async def import_data(sid, data):
                 logger.info(f"Added telemetry: {item.name} with IOA {item.ioa} using {value_type.__name__}")
             else:
                 await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
+                
+        for tc in data.get("tap_changers", []):
+            item = TapChangerItem(**tc)
+            tap_changers[item.id] = item
+            
         
         # Emit updated data to all clients 
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
         await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
         await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
         await sio.emit('import_data_response', {"status": "success"}, room=sid)
     except Exception as e:
         logger.error(f"Error importing data: {e}")
@@ -558,6 +638,15 @@ async def update_order(sid, data):
             if id in telemetries:
                 ordered_items[id] = telemetries[id]
         telemetries = ordered_items
+        
+    elif item_type == 'tap_changers':
+        # Reorder tap_changers
+        global tap_changers
+        ordered_items = {}
+        for id in item_ids:
+            if id in tap_changers:
+                ordered_items[id] = tap_changers[id]
+        tap_changers = ordered_items
     
 async def monitor_circuit_breaker_changes():
     """
@@ -673,7 +762,12 @@ async def monitor_circuit_breaker_changes():
         except Exception as e:
             logger.error(f"Error in circuit breaker monitoring task: {str(e)}")
             await asyncio.sleep(3)  # Wait before retrying if there's an error
+            
+# todo
+async def monitor_tap_changer_changes():
     
+    return
+
 async def poll_ioa_values():
     """
     Continuously poll IOA values from the IEC server and send them to frontend clients.
@@ -792,11 +886,15 @@ async def lifespan(app: FastAPI):
     # Start the IOA polling task
     polling_task = asyncio.create_task(poll_ioa_values())
     monitor_task = asyncio.create_task(monitor_circuit_breaker_changes())
-    
-    yield 
-    
+    monitor_tap_changer_task = asyncio.create_task(monitor_tap_changer_changes())
+
+    yield
+
     # Cancel the polling task when shutting down
     polling_task.cancel()
+    monitor_task.cancel()
+    monitor_tap_changer_task.cancel()
+    
     try:
         await polling_task
     except asyncio.CancelledError:
@@ -818,7 +916,8 @@ async def root():
         "items": {
             "circuit_breakers": len(circuit_breakers),
             "telesignals": len(telesignals),
-            "telemetries": len(telemetries)
+            "telemetries": len(telemetries),
+            "tap_changers": len(tap_changers)
         }
     }
 
