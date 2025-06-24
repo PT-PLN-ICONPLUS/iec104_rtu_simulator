@@ -437,23 +437,43 @@ async def remove_telemetry(sid, data):
     return {"status": "error", "message": "Telemetry not found"}
     
 @sio.event
+async def add_tap_changer_ioa(item: TapChangerItem):
+    callback = lambda ioa, ioa_object, server, is_select=None: (
+        server.update_ioa_from_server(ioa, ioa_object['data']) 
+        if not is_select else True
+    )
+
+    # Add IOAs to the IEC server
+    IEC_SERVER.add_ioa(item.ioa_value, MeasuredValueScaled, item.value, None, False)
+    IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, item.ioa_status_raise_lower, None, True)
+    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.ioa_status_auto_manual, None, True)
+    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.ioa_local_remote, None, True)    
+    IEC_SERVER.add_ioa(item.ioa_command_raise_lower, DoubleCommand, item.ioa_command_raise_lower, None, True)
+    IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, item.ioa_command_auto_manual, None, True)
+    
+    logger.info(f"Added tap changer: {item.name} with IOA {item.ioa_value} for value")
+    
+    return 0
+    
+@sio.event
 async def add_tap_changer(sid, data):
     item = TapChangerItem(**data)
     tap_changers[item.id] = item
-
-    # Add IOAs to the IEC server
-    result = IEC_SERVER.add_ioa(item.ioa, MeasuredValueScaled, item.value, None, False)
-    if result == 0:
-        # Initialize with auto_mode disabled
-        IEC_SERVER.ioa_list[item.ioa]['auto_mode'] = False
-        logger.info(f"Added tap changer: {item.name} with IOA {item.ioa}")
-    else:
-        await sio.emit('error', {'message': f'Failed to add tap changer IOA {item.ioa}'})
+    
+    result = add_tap_changer_ioa(item)
+    
+    if result != 0:
+        await sio.emit('error', {'message': f'Failed to add tap changer {item.name}'})
+        return {"status": "error", "message": f"Failed to add tap changer {item.name}"}
+    
+    await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+    return {"status": "success", "message": f"Added tap changer {item.name}"}
         
 @sio.event
 async def update_tap_changer(sid, data):
     id = data.get('id')
     
+    # todo
     if id:
         for item_id, item in list(tap_changers.items()):
             if id == item_id:
@@ -592,6 +612,7 @@ async def import_data(sid, data):
             else:
                 await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
                 
+        # todo
         for tc in data.get("tap_changers", []):
             item = TapChangerItem(**tc)
             tap_changers[item.id] = item
@@ -765,8 +786,11 @@ async def monitor_circuit_breaker_changes():
             
 # todo
 async def monitor_tap_changer_changes():
-    
-    return
+    """
+    Continuously monitor tap changer values for changes from external sources.
+    When changes are detected, emit the updated values to the frontend.
+    """
+    logger.info("Starting tap changer monitoring task")
 
 async def poll_ioa_values():
     """

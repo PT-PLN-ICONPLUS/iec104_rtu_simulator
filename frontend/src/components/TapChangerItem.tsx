@@ -5,6 +5,7 @@ import socket from "../socket";
 import { TapChangerItem } from "@/lib/items";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
+// todo
 function TapChanger(item: TapChangerItem & {
   isEditing: boolean;
   onEdit?: (id: string) => void;
@@ -15,7 +16,20 @@ function TapChanger(item: TapChangerItem & {
   const [isRemote, setIsRemote] = useState(item.is_local_remote);
 
   useEffect(() => {
+    const handleUpdate = (data: TapChangerItem[]) => {
+      // Filter the data to find the specific item based on id
+      const filtered = data.filter((look: TapChangerItem) => look.id === item.id);
+      if (filtered.length > 0 && filtered[0].id === item.id) {
+        setValue(filtered[0].value);
+        setAuto(filtered[0].auto_mode);
+        setIsRemote(filtered[0].is_local_remote);
+      }
+    }
 
+    socket.on('tap_changers', handleUpdate);
+    return () => {
+      socket.off('tap_changers', handleUpdate);
+    }
   }, [item.id]);
 
   const handleValue = (type: string) => {

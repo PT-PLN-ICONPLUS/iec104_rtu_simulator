@@ -60,6 +60,16 @@ export function ManageItemDialog({
   const [minValue, setMinValue] = useState("");
   const [maxValue, setMaxValue] = useState("");
 
+  // Tap Changer fields
+  const [value, setValue] = useState("");
+  const [valueHighLimit, setValueHighLimit] = useState("");
+  const [valueLowLimit, setValueLowLimit] = useState("");
+  const [ioaStatusRaiseLower, setIOAStatusRaiseLower] = useState("");
+  const [ioaCommandRaiseLower, setIOACommandRaiseLower] = useState("");
+  const [ioaStatusAutoManual, setIOAStatusAutoManual] = useState("");
+  const [ioaCommandAutoManual, setIOACommandAutoManual] = useState("");
+  const [ioaLocalRemote, setIOALocalRemote] = useState("");
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Create a bundle of props to pass to child dialogs
@@ -103,6 +113,22 @@ export function ManageItemDialog({
     setMaxValue,
     scaleFactor,
     setScaleFactor,
+    value,
+    setValue,
+    valueHighLimit,
+    setValueHighLimit,
+    valueLowLimit,
+    setValueLowLimit,
+    ioaStatusRaiseLower,
+    setIOAStatusRaiseLower,
+    ioaCommandRaiseLower,
+    setIOACommandRaiseLower,
+    ioaStatusAutoManual,
+    setIOAStatusAutoManual,
+    ioaCommandAutoManual,
+    setIOACommandAutoManual,
+    ioaLocalRemote,
+    setIOALocalRemote,
   };
 
 
@@ -141,6 +167,18 @@ export function ManageItemDialog({
         setScaleFactor(itemToEdit.scale_factor?.toString() || "1");
         setMinValue(itemToEdit.min_value?.toString() || "0");
         setMaxValue(itemToEdit.max_value?.toString() || "100");
+      } else if ('ioa_value' in itemToEdit) {
+        // Tap Changer
+        setItemType("Tap Changer");
+        setAddress(itemToEdit.ioa_value?.toString() || "");
+        setValue(itemToEdit.value?.toString() || "");
+        setValueHighLimit(itemToEdit.value_high_limit?.toString() || "");
+        setValueLowLimit(itemToEdit.value_low_limit?.toString() || "");
+        setIOAStatusRaiseLower(itemToEdit.ioa_status_raise_lower?.toString() || "");
+        setIOACommandRaiseLower(itemToEdit.ioa_command_raise_lower?.toString() || "");
+        setIOAStatusAutoManual(itemToEdit.ioa_status_auto_manual?.toString() || "");
+        setIOACommandAutoManual(itemToEdit.ioa_command_auto_manual?.toString() || "");
+        setIOALocalRemote(itemToEdit.ioa_local_remote?.toString() || "");
       }
     } else if (isOpen && action !== "edit") {
       // Reset form when opening for add/remove
@@ -169,6 +207,7 @@ export function ManageItemDialog({
     setErrors({});
     setIsDoublePoint("false");
     setIsLocalRemoteDP("false");
+    setIOALocalRemoteDP("");
   };
 
   const validateForm = () => {
@@ -326,6 +365,60 @@ export function ManageItemDialog({
       }
     }
 
+    if (itemType === "Tap Changer") {
+      if (!address) {
+        newErrors.address = "Address is required";
+      } else if (isNaN(Number(address))) {
+        newErrors.address = "Address must be a number";
+      }
+
+      if (value === "" || isNaN(Number(value))) {
+        newErrors.value = "Valid value is required";
+      }
+
+      if (!valueHighLimit) {
+        newErrors.valueHighLimit = "Value High Limit is required";
+      } else if (isNaN(Number(valueHighLimit))) {
+        newErrors.valueHighLimit = "Value High Limit must be a number";
+      }
+
+      if (!valueLowLimit) {
+        newErrors.valueLowLimit = "Value Low Limit is required";
+      } else if (isNaN(Number(valueLowLimit))) {
+        newErrors.valueLowLimit = "Value Low Limit must be a number";
+      }
+
+      if (!ioaStatusRaiseLower) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower is required";
+      } else if (isNaN(Number(ioaStatusRaiseLower))) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower must be a number";
+      }
+
+      if (!ioaCommandRaiseLower) {
+        newErrors.ioaCommandRaiseLower = "IOA Command Raise/Lower is required";
+      } else if (isNaN(Number(ioaCommandRaiseLower))) {
+        newErrors.ioaCommandRaiseLower = "IOA Command Raise/Lower must be a number";
+      }
+
+      if (!ioaStatusAutoManual) {
+        newErrors.ioaStatusAutoManual = "IOA Status Auto/Manual is required";
+      } else if (isNaN(Number(ioaStatusAutoManual))) {
+        newErrors.ioaStatusAutoManual = "IOA Status Auto/Manual must be a number";
+      }
+
+      if (!ioaCommandAutoManual) {
+        newErrors.ioaCommandAutoManual = "IOA Command Auto/Manual is required";
+      } else if (isNaN(Number(ioaCommandAutoManual))) {
+        newErrors.ioaCommandAutoManual = "IOA Command Auto/Manual must be a number";
+      }
+
+      if (!ioaLocalRemote) {
+        newErrors.ioaLocalRemote = "IOA Local/Remote is required";
+      } else if (isNaN(Number(ioaLocalRemote))) {
+        newErrors.ioaLocalRemote = "IOA Local/Remote must be a number";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -376,6 +469,21 @@ export function ManageItemDialog({
           min_value: parseFloat(minValue),
           max_value: parseFloat(maxValue),
           interval: parseInt(interval)
+        };
+      } else if (itemType === "Tap Changer") {
+        submissionData = {
+          name,
+          ioa_value: parseInt(address),
+          value: parseInt(value),
+          value_high_limit: parseInt(valueHighLimit),
+          value_low_limit: parseInt(valueLowLimit),
+          ioa_status_raise_lower: parseInt(ioaStatusRaiseLower),
+          ioa_command_raise_lower: parseInt(ioaCommandRaiseLower),
+          ioa_status_auto_manual: parseInt(ioaStatusAutoManual),
+          ioa_command_auto_manual: parseInt(ioaCommandAutoManual),
+          ioa_local_remote: parseInt(ioaLocalRemote),
+          interval: parseInt(interval),
+          ...commonData
         };
       }
       onSubmit({ ...commonData, ...submissionData });
