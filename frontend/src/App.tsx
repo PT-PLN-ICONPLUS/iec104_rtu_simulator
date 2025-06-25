@@ -25,6 +25,8 @@ function App() {
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
   const [tapChangers, setTapChangers] = useState<TapChangerItem[]>([]);
 
+  const [combinedOrder, setCombinedOrder] = useState<{ id: string; type: string }[]>([]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -43,7 +45,7 @@ function App() {
       circuit_breakers: CircuitBreakerItem[];
       telesignals: TeleSignalItem[];
       telemetries: TelemetryItem[];
-      tap_changers: TapChangerItem[]; // Optional, if you have tap changers
+      tap_changers: TapChangerItem[];
     }) => {
       console.log('Initial data received:', response);
 
@@ -52,6 +54,13 @@ function App() {
       setTeleSignals(response.telesignals || []);
       setTeleMetries(response.telemetries || []);
       setTapChangers(response.tap_changers || []);
+
+      // Initialize combined order properly
+      const initialCombinedOrder = [
+        ...(response.circuit_breakers || []).map(item => ({ id: item.id, type: 'circuit_breaker' })),
+        ...(response.tap_changers || []).map(item => ({ id: item.id, type: 'tap_changer' }))
+      ];
+      setCombinedOrder(initialCombinedOrder);
     });
 
     // Handle errors
@@ -423,38 +432,56 @@ function App() {
     reader.readAsText(file);
   };
 
-  const handleDragEndCombined = (event: any) => {
+
+  const handleDragEndCombined = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    // Check if the dragged item is a circuit breaker
-    const isCircuitBreaker = circuitBreakers.some(item => item.id === active.id);
-    const isTapChanger = tapChangers.some(item => item.id === active.id);
+    // Get the current order or create it from existing items
+    const currentOrder = combinedOrder.length > 0
+      ? combinedOrder
+      : [
+        ...circuitBreakers.map(item => ({ id: item.id, type: 'circuit_breaker' })),
+        ...tapChangers.map(item => ({ id: item.id, type: 'tap_changer' }))
+      ];
 
-    if (isCircuitBreaker) {
-      // Handle circuit breaker reordering
-      setCircuitBreakers((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
+    const activeIndex = currentOrder.findIndex(item => item.id === active.id);
+    const overIndex = currentOrder.findIndex(item => item.id === over.id);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          return arrayMove(items, oldIndex, newIndex);
+    if (activeIndex !== -1 && overIndex !== -1) {
+      // Reorder the combined array
+      const reorderedItems = arrayMove(currentOrder, activeIndex, overIndex);
+
+      // Split back into separate arrays while maintaining original item data
+      const newCircuitBreakers: CircuitBreakerItem[] = [];
+      const newTapChangers: TapChangerItem[] = [];
+
+      reorderedItems.forEach(orderItem => {
+        if (orderItem.type === 'circuit_breaker') {
+          const originalItem = circuitBreakers.find(cb => cb.id === orderItem.id);
+          if (originalItem) {
+            newCircuitBreakers.push(originalItem);
+          }
+        } else if (orderItem.type === 'tap_changer') {
+          const originalItem = tapChangers.find(tc => tc.id === orderItem.id);
+          if (originalItem) {
+            newTapChangers.push(originalItem);
+          }
         }
-        return items;
       });
-    } else if (isTapChanger) {
-      // Handle tap changer reordering
-      setTapChangers((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          return arrayMove(items, oldIndex, newIndex);
-        }
-        return items;
+      // Update all states in the correct order
+      setCombinedOrder(reorderedItems);
+      setCircuitBreakers(newCircuitBreakers);
+      setTapChangers(newTapChangers);
+
+      // Emit the new combined order to backend
+      socket.emit('update_order', {
+        type: 'combined',
+        items: reorderedItems
       });
     }
   };
@@ -621,40 +648,50 @@ function App() {
               onDragEnd={handleDragEndCombined}
             >
               <SortableContext
-                items={[...circuitBreakers.map(item => item.id), ...tapChangers.map(item => item.id)]}
+                items={combinedOrder.length > 0 ? combinedOrder.map(item => item.id) : [...circuitBreakers.map(item => item.id), ...tapChangers.map(item => item.id)]}
                 strategy={verticalListSortingStrategy}
               >
-                {circuitBreakers.map(item => (
-                  <SortableItem
-                    key={item.id}
-                    id={item.id}
-                    isDraggingEnabled={isDragging}
-                  >
-                    <CircuitBreaker
-                      key={item.id}
-                      {...item}
-                      isEditing={isEditing}
-                      onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
-                      onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
-                    />
-                  </SortableItem>
-                ))}
-
-                {tapChangers.map(item => (
-                  <SortableItem
-                    key={item.id}
-                    id={item.id}
-                    isDraggingEnabled={isDragging}
-                  >
-                    <TapChanger
-                      key={item.id}
-                      {...item}
-                      isEditing={isEditing}
-                      onEdit={(id) => handleEditItem(id, 'tap_changer')}
-                      onDelete={(id) => handleDeleteItem(id, 'tap_changer')}
-                    />
-                  </SortableItem>
-                ))}
+                {(combinedOrder.length > 0 ? combinedOrder : [
+                  ...circuitBreakers.map(item => ({ id: item.id, type: 'circuit_breaker' })),
+                  ...tapChangers.map(item => ({ id: item.id, type: 'tap_changer' }))
+                ]).map(orderItem => {
+                  if (orderItem.type === 'circuit_breaker') {
+                    const item = circuitBreakers.find(cb => cb.id === orderItem.id);
+                    return item ? (
+                      <SortableItem
+                        key={item.id}
+                        id={item.id}
+                        isDraggingEnabled={isDragging}
+                      >
+                        <CircuitBreaker
+                          key={item.id}
+                          {...item}
+                          isEditing={isEditing}
+                          onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
+                          onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
+                        />
+                      </SortableItem>
+                    ) : null;
+                  } else if (orderItem.type === 'tap_changer') {
+                    const item = tapChangers.find(tc => tc.id === orderItem.id);
+                    return item ? (
+                      <SortableItem
+                        key={item.id}
+                        id={item.id}
+                        isDraggingEnabled={isDragging}
+                      >
+                        <TapChanger
+                          key={item.id}
+                          {...item}
+                          isEditing={isEditing}
+                          onEdit={(id) => handleEditItem(id, 'tap_changer')}
+                          onDelete={(id) => handleDeleteItem(id, 'tap_changer')}
+                        />
+                      </SortableItem>
+                    ) : null;
+                  }
+                  return null;
+                })}
               </SortableContext>
             </DndContext>
           </div>
