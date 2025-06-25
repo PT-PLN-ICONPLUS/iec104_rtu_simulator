@@ -16,7 +16,7 @@ export IMAGE_TAG
 # Define image tags and registry
 BACKEND_IMAGE_TAG="iec104-simulator-backend-$IMAGE_TAG"
 FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
-REGISTRY="10.14.73.59/scada"
+REGISTRY="grita.id/scada"
 
 echo "Deleting Kubernetes resources..."
 

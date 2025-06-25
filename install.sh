@@ -20,7 +20,7 @@ FASTAPI_HOST=$8
 
 BACKEND_IMAGE_TAG="iec104-simulator-backend-$IMAGE_TAG"
 FRONTEND_IMAGE_TAG="iec104-simulator-frontend-$IMAGE_TAG"
-REGISTRY="10.14.73.59/scada"
+REGISTRY="grita.id/scada"
 
 echo "Building Docker images..."
 docker build -t $BACKEND_IMAGE_TAG --build-arg IMAGE_TAG=$IMAGE_TAG --build-arg FASTAPI_PORT=$FASTAPI_PORT --build-arg IEC104_PORT=$IEC104_PORT -f ./backend/Dockerfile.prod .

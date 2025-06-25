@@ -19,7 +19,7 @@ spec:
         - name: harbor-secret
       containers:
         - name: iec104-simulator-backend-${IMAGE_TAG}
-          image: 10.14.73.59/scada/iec104-simulator-backend-${IMAGE_TAG}
+          image: grita.id/scada/iec104-simulator-backend-${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: ${FASTAPI_PORT}
