@@ -361,7 +361,7 @@ function App() {
       ioa_command_raise_lower: data.ioa_command_raise_lower,
       ioa_status_raise_lower: data.ioa_status_raise_lower,
       is_local_remote: 1,
-      ioa_local_remote: 0
+      ioa_local_remote: data.ioa_local_remote
     };
 
     if (socket) {

@@ -41,6 +41,22 @@ type EditDialogProps = {
   setMaxValue: (value: string) => void;
   scaleFactor: string;
   setScaleFactor: (value: string) => void;
+  value: string;
+  setValue: (value: string) => void;
+  valueHighLimit: string;
+  setValueHighLimit: (value: string) => void;
+  valueLowLimit: string;
+  setValueLowLimit: (value: string) => void;
+  ioaStatusRaiseLower: string;
+  setIOAStatusRaiseLower: (value: string) => void;
+  ioaCommandRaiseLower: string;
+  setIOACommandRaiseLower: (value: string) => void;
+  ioaStatusAutoManual: string;
+  setIOAStatusAutoManual: (value: string) => void;
+  ioaCommandAutoManual: string;
+  setIOACommandAutoManual: (value: string) => void;
+  ioaLocalRemote: string;
+  setIOALocalRemote: (value: string) => void;
 };
 
 export function EditDialog({
@@ -82,6 +98,22 @@ export function EditDialog({
   setMaxValue,
   scaleFactor,
   setScaleFactor,
+  value,
+  setValue,
+  valueHighLimit,
+  setValueHighLimit,
+  valueLowLimit,
+  setValueLowLimit,
+  ioaStatusRaiseLower,
+  setIOAStatusRaiseLower,
+  ioaCommandRaiseLower,
+  setIOACommandRaiseLower,
+  ioaStatusAutoManual,
+  setIOAStatusAutoManual,
+  ioaCommandAutoManual,
+  setIOACommandAutoManual,
+  ioaLocalRemote,
+  setIOALocalRemote
 }: EditDialogProps) {
   return (
     <>
@@ -396,6 +428,130 @@ export function EditDialog({
           </div>
 
           {errors.range && <p className="text-red-500 text-xs">{errors.range}</p>}
+        </>
+      )}
+
+      {itemType === "Tap Changer" && (
+        <>
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="address" className="w-1/3">IOA Value</Label>
+            <input
+              type="number"
+              id="address"
+              className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+            {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="value" className="w-1/3">Value</Label>
+            <input
+              type="number"
+              id="value"
+              className={`border rounded p-2 w-2/3 ${errors.value ? "border-red-500" : ""}`}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            {errors.value && <p className="text-red-500 text-xs">{errors.value}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="value-high-limit" className="w-1/3">Value High Limit</Label>
+            <input
+              type="number"
+              id="value-high-limit"
+              className={`border rounded p-2 w-2/3 ${errors.valueHighLimit ? "border-red-500" : ""}`}
+              value={valueHighLimit}
+              onChange={(e) => setValueHighLimit(e.target.value)}
+            />
+            {errors.valueHighLimit && <p className="text-red-500 text-xs">{errors.valueHighLimit}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="value-low-limit" className="w-1/3">Value Low Limit</Label>
+            <input
+              type="number"
+              id="value-low-limit"
+              className={`border rounded p-2 w-2/3 ${errors.valueLowLimit ? "border-red-500" : ""}`}
+              value={valueLowLimit}
+              onChange={(e) => setValueLowLimit(e.target.value)}
+            />
+            {errors.valueLowLimit && <p className="text-red-500 text-xs">{errors.valueLowLimit}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="interval" className="w-1/3">Interval</Label>
+            <input
+              type="number"
+              id="interval"
+              className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+            />
+            {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-status-raise-lower" className="w-1/3">IOA Status Raise Lower</Label>
+            <input
+              type="number"
+              id="ioa-status-raise-lower"
+              className={`border rounded p-2 w-2/3 ${errors.ioaStatusRaiseLower ? "border-red-500" : ""}`}
+              value={ioaStatusRaiseLower}
+              onChange={(e) => setIOAStatusRaiseLower(e.target.value)}
+            />
+            {errors.ioaStatusRaiseLower && <p className="text-red-500 text-xs">{errors.ioaStatusRaiseLower}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-command-raise-lower" className="w-1/3">IOA Command Raise Lower</Label>
+            <input
+              type="number"
+              id="ioa-command-raise-lower"
+              className={`border rounded p-2 w-2/3 ${errors.ioaCommandRaiseLower ? "border-red-500" : ""}`}
+              value={ioaCommandRaiseLower}
+              onChange={(e) => setIOACommandRaiseLower(e.target.value)}
+            />
+            {errors.ioaCommandRaiseLower && <p className="text-red-500 text-xs">{errors.ioaCommandRaiseLower}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-status-auto-manual" className="w-1/3">IOA Status Auto Manual</Label>
+            <input
+              type="number"
+              id="ioa-status-auto-manual"
+              className={`border rounded p-2 w-2/3 ${errors.ioaStatusAutoManual ? "border-red-500" : ""}`}
+              value={ioaStatusAutoManual}
+              onChange={(e) => setIOAStatusAutoManual(e.target.value)}
+            />
+            {errors.ioaStatusAutoManual && <p className="text-red-500 text-xs">{errors.ioaStatusAutoManual}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-command-auto-manual" className="w-1/3">IOA Command Auto Manual</Label>
+            <input
+              type="number"
+              id="ioa-command-auto-manual"
+              className={`border rounded p-2 w-2/3 ${errors.ioaCommandAutoManual ? "border-red-500" : ""}`}
+              value={ioaCommandAutoManual}
+              onChange={(e) => setIOACommandAutoManual(e.target.value)}
+            />
+            {errors.ioaCommandAutoManual && <p className="text-red-500 text-xs">{errors.ioaCommandAutoManual}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-local-remote" className="w-1/3">IOA Local Remote</Label>
+            <input
+              type="number"
+              id="ioa-local-remote"
+              className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
+              value={ioaLocalRemote}
+              onChange={(e) => setIOALocalRemote(e.target.value)}
+            />
+            {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+          </div>
         </>
       )}
     </>

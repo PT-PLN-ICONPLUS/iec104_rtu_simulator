@@ -171,6 +171,7 @@ export function ManageItemDialog({
         // Tap Changer
         setItemType("Tap Changer");
         setAddress(itemToEdit.ioa_value?.toString() || "");
+        setInterval(itemToEdit.interval?.toString() || "");
         setValue(itemToEdit.value?.toString() || "");
         setValueHighLimit(itemToEdit.value_high_limit?.toString() || "");
         setValueLowLimit(itemToEdit.value_low_limit?.toString() || "");
@@ -208,6 +209,14 @@ export function ManageItemDialog({
     setIsDoublePoint("false");
     setIsLocalRemoteDP("false");
     setIOALocalRemoteDP("");
+    setValue("");
+    setValueHighLimit("");
+    setValueLowLimit("");
+    setIOAStatusRaiseLower("");
+    setIOACommandRaiseLower("");
+    setIOAStatusAutoManual("");
+    setIOACommandAutoManual("");
+    setIOALocalRemote("");
   };
 
   const validateForm = () => {
@@ -386,6 +395,16 @@ export function ManageItemDialog({
         newErrors.valueLowLimit = "Value Low Limit is required";
       } else if (isNaN(Number(valueLowLimit))) {
         newErrors.valueLowLimit = "Value Low Limit must be a number";
+      }
+
+      if (Number(valueLowLimit) >= Number(valueHighLimit)) {
+        newErrors.range = "Value High Limit must be greater than Value Low Limit";
+      }
+
+      if (!ioaStatusRaiseLower) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower is required";
+      } else if (isNaN(Number(ioaStatusRaiseLower))) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower must be a number";
       }
 
       if (!ioaStatusRaiseLower) {

@@ -437,7 +437,7 @@ async def remove_telemetry(sid, data):
     return {"status": "error", "message": "Telemetry not found"}
     
 @sio.event
-async def add_tap_changer_ioa(item: TapChangerItem):
+def add_tap_changer_ioa(item: TapChangerItem):
     callback = lambda ioa, ioa_object, server, is_select=None: (
         server.update_ioa_from_server(ioa, ioa_object['data']) 
         if not is_select else True
@@ -445,11 +445,11 @@ async def add_tap_changer_ioa(item: TapChangerItem):
 
     # Add IOAs to the IEC server
     IEC_SERVER.add_ioa(item.ioa_value, MeasuredValueScaled, item.value, None, False)
-    IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, item.ioa_status_raise_lower, None, True)
-    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.ioa_status_auto_manual, None, True)
-    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.ioa_local_remote, None, True)    
-    IEC_SERVER.add_ioa(item.ioa_command_raise_lower, DoubleCommand, item.ioa_command_raise_lower, None, True)
-    IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, item.ioa_command_auto_manual, None, True)
+    IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, 0, None, False)  # 0 = neutral
+    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.auto_mode, None, False)
+    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.is_local_remote, None, False)    
+    IEC_SERVER.add_ioa(item.ioa_command_raise_lower, DoubleCommand, 0, callback, True)  # Command IOA with callback
+    IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, item.auto_mode, callback, True)  # Command IOA with callback
     
     logger.info(f"Added tap changer: {item.name} with IOA {item.ioa_value} for value")
     
@@ -473,42 +473,52 @@ async def add_tap_changer(sid, data):
 async def update_tap_changer(sid, data):
     id = data.get('id')
     
-    # todo
     if id:
         for item_id, item in list(tap_changers.items()):
             if id == item_id:
-                # Check if IOA is being updated
-                old_ioa = item.ioa_value
-                new_ioa = data.get('ioa_value')
+                # Check for IOA changes that require removal/re-addition
+                ioa_changes = {}
+                for ioa_key in ['ioa_value', 'ioa_status_raise_lower', 'ioa_command_raise_lower', 
+                               'ioa_status_auto_manual', 'ioa_command_auto_manual', 'ioa_local_remote']:
+                    if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
+                        ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
                 
-                # Handle IOA update if needed
-                if new_ioa is not None and old_ioa != new_ioa:
-                    # Remove old IOA
-                    IEC_SERVER.remove_ioa(old_ioa)
+                # If there are IOA changes, remove old IOAs and add new ones
+                if ioa_changes:
+                    # Remove all old IOAs
+                    IEC_SERVER.remove_ioa(item.ioa_value)
+                    IEC_SERVER.remove_ioa(item.ioa_status_raise_lower)
+                    IEC_SERVER.remove_ioa(item.ioa_command_raise_lower)
+                    IEC_SERVER.remove_ioa(item.ioa_status_auto_manual)
+                    IEC_SERVER.remove_ioa(item.ioa_command_auto_manual)
+                    IEC_SERVER.remove_ioa(item.ioa_local_remote)
                     
-                    # Add new IOA
-                    result = IEC_SERVER.add_ioa(new_ioa, MeasuredValueScaled, item.value, None, False)
-                    if result != 0:
-                        await sio.emit('error', {'message': f'Failed to update tap changer IOA to {new_ioa}'})
-                        return {"status": "error", "message": f"Failed to update IOA to {new_ioa}"}
+                    # Update all data fields
+                    for key, value in data.items():
+                        if hasattr(tap_changers[item_id], key) and key != 'id':
+                            setattr(tap_changers[item_id], key, value)
                     
-                    # Update auto_mode for new IOA
-                    IEC_SERVER.ioa_list[new_ioa]['auto_mode'] = item.auto_mode
-                
-                # Update all fields that are provided in the data
-                for key, value in data.items():
-                    if hasattr(tap_changers[item_id], key) and key != 'id':
-                        setattr(tap_changers[item_id], key, value)
-                        
-                        # Update IEC server for the IOA value
-                        if key == 'value':
-                            IEC_SERVER.update_ioa(item.ioa, value)
+                    # Add new IOAs with updated configuration
+                    add_tap_changer_ioa(tap_changers[item_id])
+                else:
+                    # No IOA changes, just update fields and IOA values
+                    for key, value in data.items():
+                        if hasattr(tap_changers[item_id], key) and key != 'id':
+                            setattr(tap_changers[item_id], key, value)
+                            
+                            # Update IEC server values for relevant fields
+                            if key == 'value':
+                                IEC_SERVER.update_ioa(item.ioa_value, value)
+                            elif key == 'auto_mode':
+                                IEC_SERVER.update_ioa(item.ioa_status_auto_manual, value)
+                            elif key == 'is_local_remote':
+                                IEC_SERVER.update_ioa(item.ioa_local_remote, value)
                 
                 logger.info(f"Updated tap changer: {item.name}, data: {tap_changers[item_id].model_dump()}")
                 await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
                 return {"status": "success"}
+    
     return {"status": "error", "message": "Tap changer not found"}
-
 
 @sio.event
 async def remove_tap_changer(sid, data):
@@ -516,14 +526,18 @@ async def remove_tap_changer(sid, data):
     if item_id and item_id in tap_changers:
         item = tap_changers.pop(item_id)
         
-        # Remove the IOA from the IEC server
-        result = IEC_SERVER.remove_ioa(item.ioa)
-        if result != 0:
-            await sio.emit('error', {'message': f'Failed to remove tap changer IOA {item.ioa}'})
+        # Remove all IOAs from the IEC server
+        IEC_SERVER.remove_ioa(item.ioa_value)
+        IEC_SERVER.remove_ioa(item.ioa_status_raise_lower)
+        IEC_SERVER.remove_ioa(item.ioa_command_raise_lower)
+        IEC_SERVER.remove_ioa(item.ioa_status_auto_manual)
+        IEC_SERVER.remove_ioa(item.ioa_command_auto_manual)
+        IEC_SERVER.remove_ioa(item.ioa_local_remote)
         
         logger.info(f"Removed tap changer: {item.name}")
-        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
         return {"status": "success", "message": f"Removed tap changer {item.name}"}
+    
     return {"status": "error", "message": "Tap changer not found"}
 
 @sio.event
@@ -612,11 +626,16 @@ async def import_data(sid, data):
             else:
                 await sio.emit('error', {'message': f'Failed to add telemetry IOA {item.ioa}'})
                 
-        # todo
         for tc in data.get("tap_changers", []):
             item = TapChangerItem(**tc)
             tap_changers[item.id] = item
             
+            # Add all tap changer IOAs
+            result = add_tap_changer_ioa(item)
+            if result == 0:
+                logger.info(f"Added tap changer: {item.name} with IOAs")
+            else:
+                await sio.emit('error', {'message': f'Failed to add tap changer {item.name}'})
         
         # Emit updated data to all clients 
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
@@ -791,6 +810,93 @@ async def monitor_tap_changer_changes():
     When changes are detected, emit the updated values to the frontend.
     """
     logger.info("Starting tap changer monitoring task")
+    
+    # Store previous values for comparison
+    previous_values = {}
+    
+    while True:
+        try:
+            changes_detected = False
+            
+            # Check all tap changers for changes by comparing IEC_SERVER values with local values
+            for tc_id, tc in list(tap_changers.items()):
+                tc_changed = False
+                
+                # Initialize previous values dictionary for this tap changer if not exists
+                if tc_id not in previous_values:
+                    previous_values[tc_id] = {
+                        "value": None,
+                        "auto_mode": None,
+                        "is_local_remote": None,
+                        "status_raise_lower": None,
+                        "command_raise_lower": None,
+                        "command_auto_manual": None
+                    }
+                
+                # Check if tap position value changed
+                if tc.ioa_value in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_value]['data']
+                    if previous_values[tc_id]["value"] != server_value:
+                        previous_values[tc_id]["value"] = server_value
+                        tap_changers[tc_id].value = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} value: {server_value}")
+                
+                # Check if auto/manual status changed
+                if tc.ioa_status_auto_manual in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_status_auto_manual]['data']
+                    if previous_values[tc_id]["auto_mode"] != server_value:
+                        previous_values[tc_id]["auto_mode"] = server_value
+                        tap_changers[tc_id].auto_mode = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} auto mode: {server_value}")
+                
+                # Check if local/remote status changed
+                if tc.ioa_local_remote in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_local_remote]['data']
+                    if previous_values[tc_id]["is_local_remote"] != server_value:
+                        previous_values[tc_id]["is_local_remote"] = server_value
+                        tap_changers[tc_id].is_local_remote = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} local/remote: {server_value}")
+                
+                # Check if raise/lower status changed
+                if tc.ioa_status_raise_lower in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_status_raise_lower]['data']
+                    if previous_values[tc_id]["status_raise_lower"] != server_value:
+                        previous_values[tc_id]["status_raise_lower"] = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} raise/lower status: {server_value}")
+                
+                # Check if raise/lower command changed
+                if tc.ioa_command_raise_lower in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_command_raise_lower]['data']
+                    if previous_values[tc_id]["command_raise_lower"] != server_value:
+                        previous_values[tc_id]["command_raise_lower"] = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} raise/lower command: {server_value}")
+                
+                # Check if auto/manual command changed
+                if tc.ioa_command_auto_manual in IEC_SERVER.ioa_list:
+                    server_value = IEC_SERVER.ioa_list[tc.ioa_command_auto_manual]['data']
+                    if previous_values[tc_id]["command_auto_manual"] != server_value:
+                        previous_values[tc_id]["command_auto_manual"] = server_value
+                        tc_changed = True
+                        logger.info(f"Change detected for TC {tc.name} auto/manual command: {server_value}")
+
+                if tc_changed:
+                    changes_detected = True
+            
+            # If any tap changer changed, emit the updated list to all connected clients
+            if changes_detected:
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+            
+            # Sleep briefly to avoid excessive CPU usage
+            await asyncio.sleep(0.1)
+            
+        except Exception as e:
+            logger.error(f"Error in tap changer monitoring task: {str(e)}")
+            await asyncio.sleep(3)  # Wait before retrying if there's an error
 
 async def poll_ioa_values():
     """
@@ -804,7 +910,8 @@ async def poll_ioa_values():
     last_update_times = {
         "circuit_breakers": {},
         "telesignals": {},
-        "telemetries": {}
+        "telemetries": {},
+        "tap_changers": {}
     }
     
     while True:
@@ -813,7 +920,8 @@ async def poll_ioa_values():
             has_updates = {
                 "circuit_breakers": False,
                 "telesignals": False,
-                "telemetries": False
+                "telemetries": False,
+                "tap_changers": False
             }
             
             # Simulate telesignals in auto mode
@@ -881,7 +989,27 @@ async def poll_ioa_values():
                 # Record update time
                 last_update_times["telemetries"][item_id] = current_time
                 has_updates["telemetries"] = True
-                
+            
+            # Poll tap changers in auto mode
+            for item_id, item in list(tap_changers.items()):
+                # Check if item should be updated based on interval
+                last_update = last_update_times["tap_changers"].get(item_id, 0)
+                if current_time - last_update >= item.interval and item.auto_mode:
+                    # random value betwwen high and low limit
+                    new_value = random.randint(item.value_low_limit, item.value_high_limit)
+                    
+                    # Update the tap changer value
+                    tap_changers[item_id].value = new_value
+                    
+                    # Update IEC server
+                    IEC_SERVER.update_ioa(item.ioa_value, new_value)
+                    
+                    logger.info(f"Tap changer auto-updated: {item.name} (IOA: {item.ioa_value}) value: {new_value}")
+                    
+                    # Record update time
+                    last_update_times["tap_changers"][item_id] = current_time
+                    has_updates["tap_changers"] = True    
+            
             # Broadcast updates only if there were changes
             if has_updates["circuit_breakers"] and circuit_breakers:
                 await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -889,7 +1017,9 @@ async def poll_ioa_values():
                 await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             if has_updates["telemetries"] and telemetries:
                 await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
-                
+            if has_updates["tap_changers"] and tap_changers:
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+
             # Use a shorter sleep time to check more frequently, but not burn CPU
             await asyncio.sleep(0.1)
             
@@ -899,34 +1029,38 @@ async def poll_ioa_values():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Application startup")
-    
-    start_result = IEC_SERVER.start()
-    if start_result == 0:
-        logger.info("IEC 60870-5-104 server started successfully")
-    else:
-        logger.error("Failed to start IEC 60870-5-104 server")
+    logger.info("Starting IEC 60870-5-104 server...")
+    IEC_SERVER.start()
         
     # Start the IOA polling task
+    circuit_breaker_task = asyncio.create_task(monitor_circuit_breaker_changes())
+    tap_changer_task = asyncio.create_task(monitor_tap_changer_changes())
     polling_task = asyncio.create_task(poll_ioa_values())
-    monitor_task = asyncio.create_task(monitor_circuit_breaker_changes())
-    monitor_tap_changer_task = asyncio.create_task(monitor_tap_changer_changes())
 
     yield
 
     # Cancel the polling task when shutting down
+    circuit_breaker_task.cancel()
+    tap_changer_task.cancel()
     polling_task.cancel()
-    monitor_task.cancel()
-    monitor_tap_changer_task.cancel()
     
+    try:
+        await circuit_breaker_task
+    except asyncio.CancelledError:
+        pass
+    
+    try:
+        await tap_changer_task
+    except asyncio.CancelledError:
+        pass
+        
     try:
         await polling_task
     except asyncio.CancelledError:
-        logger.info("IOA polling task cancelled")
-    finally:
-        IEC_SERVER.stop()
-        logger.info("IEC 60870-5-104 server stopped successfully")
-        logger.info("Application shutdown")
+        pass
+    
+    logger.info("Stopping IEC 60870-5-104 server...")
+    IEC_SERVER.stop()
     
 app = FastAPI(lifespan=lifespan)
 socket_app = socketio.ASGIApp(sio, app)

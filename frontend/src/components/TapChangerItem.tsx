@@ -5,7 +5,6 @@ import socket from "../socket";
 import { TapChangerItem } from "@/lib/items";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
-// todo
 function TapChanger(item: TapChangerItem & {
   isEditing: boolean;
   onEdit?: (id: string) => void;
@@ -77,7 +76,7 @@ function TapChanger(item: TapChangerItem & {
       <div className="text-center py-2 border-b">
         <p className="font-bold text-lg">{item.name}</p>
       </div>
-      <div className="flex flex-row border-b-2 py-2">
+      <div className="flex flex-row border-b-2 py-2 mb-1.5">
         <div className="flex flex-col my-2 mx-6 gap-2">
           {/* Display Value */}
           <div className="flex flex-row">
@@ -154,7 +153,7 @@ function TapChanger(item: TapChangerItem & {
               />
               <span className={`font-bold ${isRemote === 2 ? 'text-red-500' : ''}`}>R</span>
               <Button
-                className={`${auto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${auto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
+                className={`${auto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${auto ? 'white' : 'green-500'} rounded w-8 h-8 border-2 border-black`}
                 onClick={handleAutoMode}
                 disabled={item.isEditing || isRemote === 2}
               >

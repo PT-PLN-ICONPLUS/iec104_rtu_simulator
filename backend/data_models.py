@@ -69,7 +69,7 @@ class TapChangerItem(BaseModel):
     ioa_status_auto_manual: int
     ioa_command_auto_manual: int
     
-    is_local_remote: int = 1
+    is_local_remote: int
     ioa_local_remote: int    
 
 
