@@ -58,8 +58,12 @@ class TapChangerItem(BaseModel):
     name: str
     ioa_value: int
     value: int
+    
     value_high_limit: int
     value_low_limit: int
+
+    ioa_high_limit: int
+    ioa_low_limit: int
     
     ioa_status_raise_lower: int  # 1: lower, 2: raise, 0: neutral
     ioa_command_raise_lower: int

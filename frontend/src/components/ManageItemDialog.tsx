@@ -69,6 +69,8 @@ export function ManageItemDialog({
   const [ioaStatusAutoManual, setIOAStatusAutoManual] = useState("");
   const [ioaCommandAutoManual, setIOACommandAutoManual] = useState("");
   const [ioaLocalRemote, setIOALocalRemote] = useState("");
+  const [ioaHighLimit, setIOAHighLimit] = useState("");
+  const [ioaLowLimit, setIOALowLimit] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -119,6 +121,10 @@ export function ManageItemDialog({
     setValueHighLimit,
     valueLowLimit,
     setValueLowLimit,
+    ioaHighLimit,
+    setIOAHighLimit,
+    ioaLowLimit,
+    setIOALowLimit,
     ioaStatusRaiseLower,
     setIOAStatusRaiseLower,
     ioaCommandRaiseLower,
@@ -173,6 +179,8 @@ export function ManageItemDialog({
         setAddress(itemToEdit.ioa_value?.toString() || "");
         setInterval(itemToEdit.interval?.toString() || "");
         setValue(itemToEdit.value?.toString() || "");
+        setIOAHighLimit(itemToEdit.ioa_high_limit?.toString() || "");
+        setIOALowLimit(itemToEdit.ioa_low_limit?.toString() || "");
         setValueHighLimit(itemToEdit.value_high_limit?.toString() || "");
         setValueLowLimit(itemToEdit.value_low_limit?.toString() || "");
         setIOAStatusRaiseLower(itemToEdit.ioa_status_raise_lower?.toString() || "");
@@ -212,6 +220,8 @@ export function ManageItemDialog({
     setValue("");
     setValueHighLimit("");
     setValueLowLimit("");
+    setIOAHighLimit("");
+    setIOALowLimit("");
     setIOAStatusRaiseLower("");
     setIOACommandRaiseLower("");
     setIOAStatusAutoManual("");
@@ -401,6 +411,18 @@ export function ManageItemDialog({
         newErrors.range = "Value High Limit must be greater than Value Low Limit";
       }
 
+      if (!ioaHighLimit) {
+        newErrors.ioaHighLimit = "IOA High Limit is required";
+      } else if (isNaN(Number(ioaHighLimit))) {
+        newErrors.ioaHighLimit = "IOA High Limit must be a number";
+      }
+
+      if (!ioaLowLimit) {
+        newErrors.ioaLowLimit = "IOA Low Limit is required";
+      } else if (isNaN(Number(ioaLowLimit))) {
+        newErrors.ioaLowLimit = "IOA Low Limit must be a number";
+      }
+
       if (!ioaStatusRaiseLower) {
         newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower is required";
       } else if (isNaN(Number(ioaStatusRaiseLower))) {
@@ -496,6 +518,8 @@ export function ManageItemDialog({
           value: parseInt(value),
           value_high_limit: parseInt(valueHighLimit),
           value_low_limit: parseInt(valueLowLimit),
+          ioa_high_limit: parseInt(ioaHighLimit),
+          ioa_low_limit: parseInt(ioaLowLimit),
           ioa_status_raise_lower: parseInt(ioaStatusRaiseLower),
           ioa_command_raise_lower: parseInt(ioaCommandRaiseLower),
           ioa_status_auto_manual: parseInt(ioaStatusAutoManual),

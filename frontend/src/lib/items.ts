@@ -59,6 +59,8 @@ export interface TapChangerItem {
   value: number;
   value_high_limit: number;
   value_low_limit: number;
+  ioa_high_limit: number;
+  ioa_low_limit: number;
   ioa_status_raise_lower: number;
   ioa_command_raise_lower: number;
   interval: number;

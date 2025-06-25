@@ -48,6 +48,10 @@ type EditDialogProps = {
   valueLowLimit: string;
   setValueLowLimit: (value: string) => void;
   ioaStatusRaiseLower: string;
+  ioaHighLimit: string;
+  setIOAHighLimit: (value: string) => void;
+  ioaLowLimit: string;
+  setIOALowLimit: (value: string) => void;
   setIOAStatusRaiseLower: (value: string) => void;
   ioaCommandRaiseLower: string;
   setIOACommandRaiseLower: (value: string) => void;
@@ -104,6 +108,10 @@ export function EditDialog({
   setValueHighLimit,
   valueLowLimit,
   setValueLowLimit,
+  ioaHighLimit,
+  setIOAHighLimit,
+  ioaLowLimit,
+  setIOALowLimit,
   ioaStatusRaiseLower,
   setIOAStatusRaiseLower,
   ioaCommandRaiseLower,
@@ -479,6 +487,30 @@ export function EditDialog({
               onChange={(e) => setValueLowLimit(e.target.value)}
             />
             {errors.valueLowLimit && <p className="text-red-500 text-xs">{errors.valueLowLimit}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-high-limit" className="w-1/3">IOA High Limit</Label>
+            <input
+              type="number"
+              id="ioa-high-limit"
+              className={`border rounded p-2 w-2/3 ${errors.ioaHighLimit ? "border-red-500" : ""}`}
+              value={ioaHighLimit}
+              onChange={(e) => setIOAHighLimit(e.target.value)}
+            />
+            {errors.ioaHighLimit && <p className="text-red-500 text-xs">{errors.ioaHighLimit}</p>}
+          </div>
+
+          <div className="flex w-full items-center gap-1.5">
+            <Label htmlFor="ioa-low-limit" className="w-1/3">IOA Low Limit</Label>
+            <input
+              type="number"
+              id="ioa-low-limit"
+              className={`border rounded p-2 w-2/3 ${errors.ioaLowLimit ? "border-red-500" : ""}`}
+              value={ioaLowLimit}
+              onChange={(e) => setIOALowLimit(e.target.value)}
+            />
+            {errors.ioaLowLimit && <p className="text-red-500 text-xs">{errors.ioaLowLimit}</p>}
           </div>
 
           <div className="flex w-full items-center gap-1.5">

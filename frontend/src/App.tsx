@@ -363,6 +363,8 @@ function App() {
       value: data.value,
       value_high_limit: data.value_high_limit,
       value_low_limit: data.value_low_limit,
+      ioa_high_limit: data.ioa_high_limit,
+      ioa_low_limit: data.ioa_low_limit,
       interval: data.interval,
       auto_mode: false,
       ioa_status_auto_manual: data.ioa_status_auto_manual,
