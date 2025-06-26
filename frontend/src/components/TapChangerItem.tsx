@@ -47,7 +47,8 @@ function TapChanger(item: TapChangerItem & {
     setValue(newValue);
     socket.emit('update_tap_changer', {
       id: item.id,
-      value: newValue
+      value: newValue,
+      status_raise_lower: type === "+" ? 1 : 2,
     })
   }
 
