@@ -160,6 +160,25 @@ class IEC60870_5_104_server:
                 logger.info(f"Error {E}")
                 
             try:
+                # Add DoubleCommand handling for tap changer command IOAs
+                type = DoubleCommand
+                newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
+                io = None
+                for ioa in self.ioa_list:
+                    if self.ioa_list[ioa]['type'] == type:
+                        if io == None:
+                            io = cast(DoubleCommand_create(None, ioa, self.ioa_list[ioa]['data'], False, 0), InformationObject)
+                            CS101_ASDU_addInformationObject(newAsdu, io)
+                        else:
+                            CS101_ASDU_addInformationObject(newAsdu, cast(DoubleCommand_create(cast(io, DoubleCommand), ioa, self.ioa_list[ioa]['data'], False, 0), InformationObject))
+                if io != None:
+                    InformationObject_destroy(io)
+                    IMasterConnection_sendASDU(connection, newAsdu)
+                CS101_ASDU_destroy(newAsdu)
+            except Exception as E:
+                logger.info(f"Error {E}")
+                
+            try:
                 type = MeasuredValueNormalized
                 newAsdu = CS101_ASDU_create(alParams, False, CS101_COT_INTERROGATED_BY_STATION, 0, 1, False, False)
                 io = None
@@ -306,8 +325,14 @@ class IEC60870_5_104_server:
                 io = cast(SinglePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
             elif self.ioa_list[ioa]['type'] == DoublePointInformation:
                 io = cast(DoublePointInformation_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
+            elif self.ioa_list[ioa]['type'] == DoubleCommand:
+                io = cast(DoubleCommand_create(None, ioa, self.ioa_list[ioa]['data'], False, 0),InformationObject)
+            elif self.ioa_list[ioa]['type'] == MeasuredValueShort:
+                io = cast(MeasuredValueShort_create(None, ioa, self.ioa_list[ioa]['data'], IEC60870_QUALITY_GOOD),InformationObject)
             else:
+                logger.error(f"Unsupported IOA type {self.ioa_list[ioa]['type']} for IOA {ioa}")
                 return False
+            
             CS101_ASDU_addInformationObject(newAsdu, io)
             InformationObject_destroy(io)
             #/* Add ASDU to slave event queue - don't release the ASDU afterwards!

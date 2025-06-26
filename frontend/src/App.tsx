@@ -366,7 +366,7 @@ function App() {
       ioa_high_limit: data.ioa_high_limit,
       ioa_low_limit: data.ioa_low_limit,
       interval: data.interval,
-      auto_mode: false,
+      auto_mode: 1,
       ioa_status_auto_manual: data.ioa_status_auto_manual,
       ioa_command_auto_manual: data.ioa_command_auto_manual,
       ioa_command_raise_lower: data.ioa_command_raise_lower,

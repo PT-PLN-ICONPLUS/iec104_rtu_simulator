@@ -64,7 +64,7 @@ export interface TapChangerItem {
   ioa_status_raise_lower: number;
   ioa_command_raise_lower: number;
   interval: number;
-  auto_mode: boolean;
+  auto_mode: number;
   ioa_status_auto_manual: number;
   ioa_command_auto_manual: number;
   is_local_remote: number;

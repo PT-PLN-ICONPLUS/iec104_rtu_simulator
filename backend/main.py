@@ -448,11 +448,11 @@ def add_tap_changer_ioa(item: TapChangerItem):
     IEC_SERVER.add_ioa(item.ioa_high_limit, MeasuredValueScaled, item.value_high_limit, callback, True)
     IEC_SERVER.add_ioa(item.ioa_low_limit, MeasuredValueScaled, item.value_low_limit, callback, True)
     IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, 0, callback, True)  # 0 = neutral
-    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.auto_mode, callback, True)
-    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.is_local_remote, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, 0, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, 0, callback, True)
     IEC_SERVER.add_ioa(item.ioa_command_raise_lower, DoubleCommand, 0, callback, True)  # Command IOA with callback
-    IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, item.auto_mode, callback, True)  # Command IOA with callback
-    
+    IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, 0, callback, True)  # Command IOA with callback
+
     logger.info(f"Added tap changer: {item.name} with IOA {item.ioa_value} for value")
     
     return 0
@@ -467,6 +467,10 @@ async def add_tap_changer(sid, data):
     if result != 0:
         await sio.emit('error', {'message': f'Failed to add tap changer {item.name}'})
         return {"status": "error", "message": f"Failed to add tap changer {item.name}"}
+    
+    IEC_SERVER.ioa_list[item.ioa_value]['auto_mode'] = item.auto_mode
+    IEC_SERVER.ioa_list[item.ioa_value]['value_low_limit'] = item.value_low_limit
+    IEC_SERVER.ioa_list[item.ioa_value]['value_high_limit'] = item.value_high_limit
     
     await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
     return {"status": "success", "message": f"Added tap changer {item.name}"}
@@ -486,6 +490,9 @@ async def update_tap_changer(sid, data):
                 
                 # If there are IOA changes, remove old IOAs and add new ones
                 if ioa_changes:
+                    
+                    logger.info(f"Got IOA changes for tap changer {item.name}: {ioa_changes}")
+                    
                     # Remove all old IOAs
                     IEC_SERVER.remove_ioa(item.ioa_value)
                     IEC_SERVER.remove_ioa(item.ioa_high_limit)
@@ -505,6 +512,7 @@ async def update_tap_changer(sid, data):
                     add_tap_changer_ioa(tap_changers[item_id])
                 else:
                     # No IOA changes, just update fields and IOA values
+                    logger.info(f"No IOA changes for tap changer {item.name}, updating straight to specific ioa")
                     for key, value in data.items():
                         if hasattr(tap_changers[item_id], key) and key != 'id':
                             setattr(tap_changers[item_id], key, value)
@@ -512,10 +520,6 @@ async def update_tap_changer(sid, data):
                             # Update IEC server values for relevant fields
                             if key == 'value':
                                 IEC_SERVER.update_ioa(item.ioa_value, value)
-                            elif key == 'value_high_limit':
-                                IEC_SERVER.update_ioa(item.ioa_high_limit, value)
-                            elif key == 'value_low_limit':
-                                IEC_SERVER.update_ioa(item.ioa_low_limit, value)
                             elif key == 'auto_mode':
                                 IEC_SERVER.update_ioa(item.ioa_status_auto_manual, value)
                             elif key == 'status_raise_lower':
@@ -1006,8 +1010,9 @@ async def poll_ioa_values():
             for item_id, item in list(tap_changers.items()):
                 # Check if item should be updated based on interval
                 last_update = last_update_times["tap_changers"].get(item_id, 0)
-                if current_time - last_update >= item.interval and item.auto_mode:
-                    # random value betwwen high and low limit
+                # Use number comparison: 2 = auto mode
+                if current_time - last_update >= item.interval and item.auto_mode == 2:
+                    # random value between high and low limit
                     new_value = random.randint(item.value_low_limit, item.value_high_limit)
                     
                     # Update the tap changer value
@@ -1020,7 +1025,7 @@ async def poll_ioa_values():
                     
                     # Record update time
                     last_update_times["tap_changers"][item_id] = current_time
-                    has_updates["tap_changers"] = True    
+                    has_updates["tap_changers"] = True   
             
             # Broadcast updates only if there were changes
             if has_updates["circuit_breakers"] and circuit_breakers:

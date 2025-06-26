@@ -52,7 +52,7 @@ function TapChanger(item: TapChangerItem & {
   }
 
   const handleAutoMode = () => {
-    const newAuto = auto === true ? false : true;
+    const newAuto = auto === 1 ? 2 : 1;
 
     setAuto(newAuto);
     socket.emit('update_tap_changer', {
@@ -153,7 +153,7 @@ function TapChanger(item: TapChangerItem & {
               />
               <span className={`font-bold ${isRemote === 2 ? 'text-red-500' : ''}`}>R</span>
               <Button
-                className={`${auto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${auto ? 'white' : 'green-500'} rounded w-8 h-8 border-2 border-black`}
+                className={`${auto === 2 ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:bg-gray-300'} text-${auto === 2 ? 'white' : 'green-500'} rounded w-8 h-8 border-2 border-black`}
                 onClick={handleAutoMode}
                 disabled={item.isEditing || isRemote === 2}
               >
