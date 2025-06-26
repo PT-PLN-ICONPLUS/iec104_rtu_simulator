@@ -444,12 +444,12 @@ def add_tap_changer_ioa(item: TapChangerItem):
     )
 
     # Add IOAs to the IEC server
-    IEC_SERVER.add_ioa(item.ioa_value, MeasuredValueScaled, item.value, None, False)
-    IEC_SERVER.add_ioa(item.ioa_high_limit, MeasuredValueScaled, item.value_high_limit, None, False)
-    IEC_SERVER.add_ioa(item.ioa_low_limit, MeasuredValueScaled, item.value_low_limit, None, False)
-    IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, 0, None, False)  # 0 = neutral
-    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.auto_mode, None, False)
-    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.is_local_remote, None, False)    
+    IEC_SERVER.add_ioa(item.ioa_value, MeasuredValueScaled, item.value, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_high_limit, MeasuredValueScaled, item.value_high_limit, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_low_limit, MeasuredValueScaled, item.value_low_limit, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_status_raise_lower, DoublePointInformation, 0, callback, True)  # 0 = neutral
+    IEC_SERVER.add_ioa(item.ioa_status_auto_manual, DoublePointInformation, item.auto_mode, callback, True)
+    IEC_SERVER.add_ioa(item.ioa_local_remote, DoublePointInformation, item.is_local_remote, callback, True)
     IEC_SERVER.add_ioa(item.ioa_command_raise_lower, DoubleCommand, 0, callback, True)  # Command IOA with callback
     IEC_SERVER.add_ioa(item.ioa_command_auto_manual, DoubleCommand, item.auto_mode, callback, True)  # Command IOA with callback
     
@@ -480,9 +480,7 @@ async def update_tap_changer(sid, data):
             if id == item_id:
                 # Check for IOA changes that require removal/re-addition
                 ioa_changes = {}
-                for ioa_key in ['ioa_value', 'ioa_high_limit', 'ioa_low_limit', 'ioa_status_raise_lower', 
-                               'ioa_command_raise_lower', 'ioa_status_auto_manual', 'ioa_command_auto_manual', 
-                               'ioa_local_remote']:
+                for ioa_key in ['ioa_value', 'ioa_high_limit', 'ioa_low_limit', 'ioa_status_raise_lower', 'ioa_command_raise_lower', 'ioa_status_auto_manual', 'ioa_command_auto_manual', 'ioa_local_remote']:
                     if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
                         ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
                 
@@ -519,6 +517,10 @@ async def update_tap_changer(sid, data):
                             elif key == 'value_low_limit':
                                 IEC_SERVER.update_ioa(item.ioa_low_limit, value)
                             elif key == 'auto_mode':
+                                IEC_SERVER.update_ioa(item.ioa_status_auto_manual, value)
+                            elif key == 'status_raise_lower':
+                                IEC_SERVER.update_ioa(item.ioa_status_raise_lower, value)
+                            elif key == 'status_auto_manual':
                                 IEC_SERVER.update_ioa(item.ioa_status_auto_manual, value)
                             elif key == 'is_local_remote':
                                 IEC_SERVER.update_ioa(item.ioa_local_remote, value)
@@ -814,7 +816,6 @@ async def monitor_circuit_breaker_changes():
             logger.error(f"Error in circuit breaker monitoring task: {str(e)}")
             await asyncio.sleep(3)  # Wait before retrying if there's an error
             
-# todo
 async def monitor_tap_changer_changes():
     """
     Continuously monitor tap changer values for changes from external sources.

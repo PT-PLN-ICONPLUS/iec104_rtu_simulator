@@ -410,7 +410,6 @@ class IEC60870_5_104_server:
                         self.update_ioa(cb.ioa_cb_status_dp, 2)
                     break
                 
-        # todo
         elif self.tap_changers:
             for tc in self.tap_changers.values():
                 if ioa == tc.ioa_local_remote:

@@ -775,7 +775,8 @@ function App() {
         action={selectedItemToEdit ? "edit" : "add"}
         items={selectedItemType === 'circuit_breaker' ? circuitBreakers :
           selectedItemType === 'telesignal' ? teleSignals :
-            selectedItemType === 'telemetry' ? teleMetries : []}
+            selectedItemType === 'telemetry' ? teleMetries :
+              selectedItemType === 'tap_changer' ? tapChangers : []}
         itemToEdit={selectedItemToEdit}
         onSubmit={selectedItemToEdit ? updateComponent : addComponent}
       />
