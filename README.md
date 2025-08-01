@@ -2,7 +2,7 @@
 
 This project is a simulator for a Remote Terminal Unit (RTU) that uses the IEC 60870-5-104 (IEC 104) protocol. It is designed to mimic the behavior of real-world devices in a SCADA (Supervisory Control and Data Acquisition) system, making it an excellent tool for development, testing, and training purposes.
 
-This project especially built for PLN Icon PLus's GRITA project, which is a SCADA system for monitoring and controlling electrical grids in Indonesia.
+This project especially built for [PLN Icon PLus](https://plniconplus.co.id/)'s GRITA project, which is a SCADA system for monitoring and controlling electrical grids in Indonesia.
 
 The application features a FastAPI backend to handle the IEC 104 logic and a React frontend for a user-friendly interface to control and monitor the simulated devices.
 
